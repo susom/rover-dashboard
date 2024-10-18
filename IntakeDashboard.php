@@ -20,6 +20,20 @@ class IntakeDashboard extends AbstractExternalModule
     }
 
     /**
+     * Helper method for inserting the JSMO JS into a page along with any preload data
+     * @param $data
+     * @param $init_method
+     * @return void
+     */
+    public function injectJSMO($data = null, $init_method = null): void
+    {
+        echo $this->initializeJavascriptModuleObject();
+
+        // Output the script tag for loading the JSMO JavaScript file
+        echo sprintf('<script src="%s"></script>', $this->getUrl("jsmo/jsmo.js", true));
+    }
+
+    /**
      * @return array
      */
     public function generateAssetFiles(): array {
