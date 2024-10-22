@@ -3,9 +3,8 @@
 /** @var \Stanford\IntakeDashboard\IntakeDashboard $module */
 
 $module->injectJSMO();
-//$urls = $module->fetchRequiredSurveys();
 $files = $module->generateAssetFiles();
-
+$urls = $module->fetchRequiredSurveys();
 //$surveys = $module->fetchRequiredSurveys();
 ?>
 
