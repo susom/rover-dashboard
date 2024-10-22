@@ -22,7 +22,7 @@
             {
                 "name": "Intake Dashboard",
                 "icon": "gear",
-                "url" : "pages/IntakeDashboard.php",
+                "url" : "pages/root.php",
                 "show-header-and-footer": false
             }
         ]
@@ -31,13 +31,12 @@
 
     "auth-ajax-actions": [
     ],
-
-    "system-settings": [
+    "project-settings": [
         {
-            "key": "parent-project",
-            "name": "<h5><strong>Parent Project</strong></h5><i>This project will house the universal intake survey and be the source of truth for all child projects</i>",
+            "key": "universal-survey",
+            "name": "<strong>Universal Intake Survey</strong><br><i>The required survey all intake submissions begin with </i>",
             "required": true,
-            "type": "project-id"
+            "type": "form-list"
         },
         {
             "key": "child-project-list-description",
@@ -60,6 +59,8 @@
                 }
             ]
         }
+    ],
+    "system-settings": [
 
     ],
 
