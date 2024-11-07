@@ -61,7 +61,12 @@
         }
     ],
     "system-settings": [
-
+        {
+            "key": "parent-project",
+            "name": "<strong>Parent project</strong><br><i>The project that houses the universal intake survey</i>",
+            "type": "project-id",
+            "required": true
+        }
     ],
 
     "compatibility": {
