@@ -4,8 +4,8 @@
 
 $module->injectJSMO();
 $files = $module->generateAssetFiles();
-$urls = $module->fetchRequiredSurveys();
-//$surveys = $module->fetchRequiredSurveys();
+//$urls = $module->fetchRequiredSurveys();
+$surveys = $module->fetchIntakeParticipation();
 ?>
 
 <!DOCTYPE html>
