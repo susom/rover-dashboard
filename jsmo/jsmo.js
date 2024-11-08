@@ -8,8 +8,18 @@
     }
 
     Object.assign(module, {
-        TestFunction: function () {
-            console.log("Test");
-        },
+        fetchIntakeParticipation: function (callback) {
+            module.ajax('fetchIntakeParticipation').then(function (res) {
+                if(res){
+                    callback(JSON.parse(res));
+                }
+
+                // if(res) {
+                //     setStateVarCallBack(res)
+                // }
+            }).catch(function (err) {
+                console.error("Catch triggered in fetchIntakeParticipation, error: ", err);
+            })
+        }
     });
 }
