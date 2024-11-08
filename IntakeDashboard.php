@@ -3,6 +3,8 @@
 namespace Stanford\IntakeDashboard;
 require_once "emLoggerTrait.php";
 require_once "classes/RepeatingForms.php";
+require_once "classes/Sanitizer.php";
+
 
 use ExternalModules\AbstractExternalModule;
 use ExternalModules;
@@ -14,6 +16,7 @@ use Project;
 class IntakeDashboard extends AbstractExternalModule
 {
     use emLoggerTrait;
+
     const BUILD_FILE_DIR = 'dashboard-ui/dist/assets';
 
     public function __construct()
@@ -38,7 +41,8 @@ class IntakeDashboard extends AbstractExternalModule
     /**
      * @return array
      */
-    public function generateAssetFiles(): array {
+    public function generateAssetFiles(): array
+    {
         $cwd = $this->getModulePath();
         $assets = [];
 
@@ -68,6 +72,7 @@ class IntakeDashboard extends AbstractExternalModule
 
         return $assets;
     }
+
     /**
      * This is the primary ajax handler for JSMO calls
      * @param $action
@@ -91,14 +96,12 @@ class IntakeDashboard extends AbstractExternalModule
                                        $survey_hash, $response_id, $survey_queue_hash, $page, $page_full, $user_id, $group_id)
     {
 
-//        $sanitized = $this->sanitizeInput($payload);
+        $sanitized = $this->sanitizeInput($payload);
 
-//        return match ($action) {
-//            'runReport' => $this->runReport($payload, 'data_entry'),
-//            'fetchFieldNames' => $this->fetchFieldNames($payload),
-//            'downloadCSV' => $this->downloadCSV($payload),
-//            default => throw new Exception ("Action $action is not defined"),
-//        };
+        return match ($action) {
+            'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
+            default => throw new Exception ("Action $action is not defined"),
+        };
     }
 
     public function redcap_survey_complete(
@@ -110,8 +113,9 @@ class IntakeDashboard extends AbstractExternalModule
         $survey_hash,
         $response_id = null,
         $repeat_instance = 1
-    ){
-        $a =1;
+    )
+    {
+        $a = 1;
     }
 
     /**
@@ -127,38 +131,70 @@ class IntakeDashboard extends AbstractExternalModule
 
     /**
      * @param $e
-     * @return array
+     * @return false|string
      */
-    public function handleGlobalError($e): array
+    public function handleGlobalError($e): false|string
     {
         $msg = $e->getMessage();
         $this->emError("Error: $msg");
-        $ret = json_encode(array(
-            'error' => array(
-                'msg' => $msg,
-            ),
-        ));
-
-        return ["result" => $ret];
+        return json_encode([
+            "error" => $msg,
+            "success" => false
+        ]);
     }
 
-
-    public function fetchIntakeParticipation(){
+    /**
+     * @return string|false
+     */
+    public function fetchIntakeParticipation(): string|false
+    {
         try {
             $username = $_SESSION['username'];
-            $parent_id = $this->getSystemSetting('parent-project');
-            if(empty($username))
+            if (empty($username))
                 throw new \Exception('No username for current session');
 
+            $parent_id = $this->getSystemSetting('parent-project');
+
+            // Grab all intake IDs of a given user in join arm
             $params = array(
                 "return_format" => "json",
                 "project_id" => $parent_id,
                 "redcap_event_name" => "user_info_arm_2",
-                "fields"=> array("type", "intake_id", "record_id"),
+                "fields" => array("type", "intake_id", "record_id"),
                 "records" => $username
             );
+            $res = json_decode(REDCap::getData($params), true);
+            if (count($res)) {
+                $ids = [];
+                foreach ($res as $item) {
+                    if (isset($item['intake_id'])) {
+                        $ids[] = $item['intake_id'];
+                    }
+                }
+                $params = array(
+                    "return_format" => "json",
+                    "project_id" => $parent_id,
+                    "redcap_event_name" => "event_1_arm_1",
+                    "records" => $ids
+                );
+                $sc = json_decode(REDCap::getData($params), true);
+//                Blend records and add additional information to intake join response
+                foreach ($sc as $intake_record) {
+                    foreach ($res as $k => $join_item) {
+                        if ($intake_record['record_id'] === $join_item['intake_id']) {
+//                            Will change intake_complete to correct form , do it dynamically
+                            $res[$k]['intake_complete'] = $intake_record['intake_complete'];
+                            $res[$k]['pi_name'] = $intake_record['pi_name'];
+                            $res[$k]['research_title'] = $intake_record['research_title'];
+                        }
+                    }
+                }
+            }
 
-            return json_decode(REDCap::getData($params), true);
+            return json_encode([
+                "data" => $res,
+                "success" => true
+            ]);
 
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
@@ -173,7 +209,8 @@ class IntakeDashboard extends AbstractExternalModule
      * @throws Exception
      * Saves a user in the hash table with reference to a universal intake submission
      */
-    public function saveUser($parent_id, $username) {
+    public function saveUser($parent_id, $username)
+    {
         $proj = new Project($parent_id);
 
         // Find the event ID for the "User" event
@@ -215,13 +252,14 @@ class IntakeDashboard extends AbstractExternalModule
     }
 
 
-    public function fetchRequiredSurveys() {
+    public function fetchRequiredSurveys()
+    {
         try {
 //            $settings = $this->getSystemSettings();
             $child_ids = $this->getSystemSetting('project-id');
             $parent_id = $this->getSystemSetting('parent-project');
 
-            if(empty($parent_id) || empty($child_ids))
+            if (empty($parent_id) || empty($child_ids))
                 throw new \Exception("Parent project or child projects have not been configured properly, exiting");
             $universal_survey_form_name = $this->getProjectSetting('universal-survey', $parent_id);
 
@@ -229,7 +267,7 @@ class IntakeDashboard extends AbstractExternalModule
             $surveyInfo = $a->surveys;
 
             $child_ids = reset($child_ids);
-            foreach ( $child_ids as $key => $value) {
+            foreach ($child_ids as $key => $value) {
                 $a = new \Project($value);
                 $surveyInfo = $a->surveys;
                 // $b = saveData()
@@ -237,7 +275,7 @@ class IntakeDashboard extends AbstractExternalModule
 
             }
             return $child_ids;
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             return $this->handleGlobalError($e);
         }
 
