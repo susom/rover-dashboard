@@ -8,10 +8,13 @@
     }
 
     Object.assign(module, {
-        fetchIntakeParticipation: function (callback) {
+        fetchIntakeParticipation: function (callback, errCallback) {
             module.ajax('fetchIntakeParticipation').then(function (res) {
-                if(res){
-                    callback(JSON.parse(res));
+                let parsed = JSON.parse(res)
+                if(parsed.success){
+                    callback(parsed);
+                } else {
+                    errCallback(parsed)
                 }
 
                 // if(res) {
