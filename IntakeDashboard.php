@@ -143,84 +143,101 @@ class IntakeDashboard extends AbstractExternalModule
         ]);
     }
 
+
     /**
-     * @return string|false
+     * @param $proj
+     * @param $event_id
+     * @return string
+     * @throws Exception
+     */
+    public function generateREDCapEventName($proj, $event_id): string
+    {
+        if(empty($event_id))
+            throw new \Exception("Event ID not passed, check config.json");
+        $event_name = $proj->eventInfo[$event_id]['name'];
+        $arm_num = $proj->eventInfo[$event_id]['arm_num'];
+        $convertedName = strtolower(str_replace(' ', '_', $event_name));
+        return $convertedName . "_arm_" . $arm_num;
+    }
+
+    /**
+     * Fetches intake participation data for the current user.
+     *
+     * @return string|false JSON-encoded string of intake participation data, or false on error.
      */
     public function fetchIntakeParticipation(): string|false
     {
         try {
-            $username = $_SESSION['username'];
-            if (empty($username))
+            $username = $_SESSION['username'] ?? null;
+            if (!$username) {
                 throw new \Exception('No username for current session');
+            }
 
             $parent_id = $this->getSystemSetting('parent-project');
-
-            // Grab all intake IDs of a given user in join arm
-            $params = array(
+            $pSettings = $this->getProjectSettings($parent_id);
+            $proj = new Project($parent_id);
+            $full_user_event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
+            $full_intake_event_name = $this->generateREDCapEventName($proj, $pSettings['universal-survey-event']);
+            // Fetch all intake IDs for the given user
+            $initialParams = [
                 "return_format" => "json",
                 "project_id" => $parent_id,
-                "redcap_event_name" => "user_info_arm_2",
-                "fields" => array("type", "intake_id", "record_id"),
+                "redcap_event_name" => $full_user_event_name,
+                "fields" => ["type", "intake_id", "record_id"],
                 "records" => $username
-            );
-            $res = json_decode(REDCap::getData($params), true);
-            if (count($res)) {
-                $ids = [];
-                foreach ($res as $item) {
-                    if (isset($item['intake_id'])) {
-                        $ids[] = $item['intake_id'];
-                    }
-                }
-                $params = array(
-                    "return_format" => "json",
-                    "project_id" => $parent_id,
-                    "redcap_event_name" => "event_1_arm_1",
-                    "records" => $ids
-                );
-                $sc = json_decode(REDCap::getData($params), true);
-//                Blend records and add additional information to intake join response
-                foreach ($sc as $intake_record) {
-                    foreach ($res as $k => $join_item) {
-                        if ($intake_record['record_id'] === $join_item['intake_id']) {
-//                            Will change intake_complete to correct form , do it dynamically
-                            $res[$k]['intake_complete'] = $intake_record['intake_complete'];
-                            $res[$k]['pi_name'] = $intake_record['pi_name'];
-                            $res[$k]['research_title'] = $intake_record['research_title'];
-                        }
+            ];
+            $userIntakes = json_decode(REDCap::getData($initialParams), true);
+
+            if (empty($userIntakes)) {
+                return json_encode(["data" => [], "success" => true]);
+            }
+
+            // Extract intake IDs from the response
+            $intakeIds = array_column($userIntakes, 'intake_id');
+
+            // Fetch additional details for each intake ID
+            $detailsParams = [
+                "return_format" => "json",
+                "project_id" => $parent_id,
+                "redcap_event_name" => $full_intake_event_name,
+                "records" => $intakeIds
+            ];
+
+            $intakeDetails = json_decode(REDCap::getData($detailsParams), true);
+
+            // Merge additional information into the user's intake data
+            foreach ($userIntakes as &$intake) {
+                foreach ($intakeDetails as $detail) {
+                    if ($detail['record_id'] === $intake['intake_id']) {
+                        $intake['intake_complete'] = $detail['intake_complete'] ?? null;
+                        $intake['pi_name'] = $detail['pi_name'] ?? null;
+                        $intake['research_title'] = $detail['research_title'] ?? null;
+                        break;
                     }
                 }
             }
 
-            return json_encode([
-                "data" => $res,
-                "success" => true
-            ]);
+            return json_encode(["data" => $userIntakes, "success" => true]);
 
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
         }
-
     }
 
     /**
-     * @param $parent_id
      * @param $username
      * @return mixed
      * @throws Exception
      * Saves a user in the hash table with reference to a universal intake submission
      */
-    public function saveUser($parent_id, $username)
+    public function saveUser($username)
     {
+        $parent_id = $this->getSystemSetting('parent-project');
+        $pSettings = $this->getProjectSettings($parent_id);
         $proj = new Project($parent_id);
 
         // Find the event ID for the "User" event
-        $event_id = null;
-        foreach ($proj->events as $key => $event) {
-            if ($event['name'] === 'User') {
-                $event_id = array_key_first($event['events']);
-                break;
-            }
-        }
+        $event_id = $pSettings['user-info-event'];
 
         // Ensure the event ID and form name are found
         if ($event_id === null || !isset($proj->eventsForms[$event_id])) {
@@ -228,22 +245,22 @@ class IntakeDashboard extends AbstractExternalModule
         }
 
         $form_name = reset($proj->eventsForms[$event_id]);
-        $arm_num = $proj->eventInfo[$event_id]['arm_num'];
-        $event_name = "{$form_name}_arm_{$arm_num}";
-
+        $event_name = $this->generateREDCapEventName($proj, $event_id);
         // Create a RepeatingForms instance and get the next instance ID
         $rForm = new RepeatingForms('user_info', $event_id, $parent_id);
         $next_instance_id = $rForm->getNextInstanceId($username);
 
         // Prepare data for saving
+        //TODO Implement type naming , intake parameter
         $saveData = [
             [
                 "record_id" => $username,
-                "type" => "secondary",
+                "type" => "Secondary",
                 "intake_id" => "5",
                 "redcap_event_name" => $event_name,
                 "redcap_repeat_instrument" => $form_name,
-                "redcap_repeat_instance" => $next_instance_id
+                "redcap_repeat_instance" => $next_instance_id,
+                "{$form_name}_complete" => 2
             ]
         ];
 
