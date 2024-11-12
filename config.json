@@ -46,6 +46,18 @@
             "type": "form-list"
         },
         {
+            "key": "universal-survey-event",
+            "name": "<strong>Universal Survey Event</strong><br><i>The event / arm the universal survey records are saved within ",
+            "required": true,
+            "type": "event-list"
+        },
+        {
+            "key": "user-info-event",
+            "name": "<strong>User Information Event</strong><br><i>The event / arm the user joining records are saved within ",
+            "required": true,
+            "type": "event-list"
+        },
+        {
             "key": "child-project-list-description",
             "type": "descriptive",
             "name": "<h5><strong>Child Projects</strong></h5><i>Each child project below will be incorporated as possible projects to triage users to depending on universal intake answers</i>"
@@ -66,6 +78,7 @@
                 }
             ]
         }
+
     ],
     "system-settings": [
         {
