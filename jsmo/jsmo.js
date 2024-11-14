@@ -16,13 +16,19 @@
                 } else {
                     errCallback(parsed)
                 }
-
-                // if(res) {
-                //     setStateVarCallBack(res)
-                // }
             }).catch(function (err) {
                 console.error("Catch triggered in fetchIntakeParticipation, error: ", err);
             })
+        },
+        checkUserDetailAccess: function(payload, callback, errCallback) {
+          module.ajax('checkUserDetailAccess', payload).then(function (res) {
+              let parsed = JSON.parse(res)
+              if(parsed.success){
+                  callback(parsed);
+              } else {
+                  errCallback(parsed)
+              }
+          })
         }
     });
 }
