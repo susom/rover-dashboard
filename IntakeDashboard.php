@@ -100,6 +100,7 @@ class IntakeDashboard extends AbstractExternalModule
 
         return match ($action) {
             'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
+            'checkUserDetailAccess' => $this->checkUserDetailAccess($payload),
             default => throw new Exception ("Action $action is not defined"),
         };
     }
@@ -115,7 +116,21 @@ class IntakeDashboard extends AbstractExternalModule
         $repeat_instance = 1
     )
     {
-        $a = 1;
+        $detailsParams = [
+            "return_format" => "json",
+            "project_id" => $project_id,
+            "records" => $record
+        ];
+
+        $completedIntake = json_decode(REDCap::getData($detailsParams), true);
+        if(!empty($completedIntake))
+            $this->createUserLinkingRecord(reset($completedIntake));
+    }
+
+    public function createUserLinkingRecord($intake) {
+        // Create each link table entry per user
+        $name = $intake['pi_name'];
+        $first_name = $intake['first_name'];
     }
 
     /**
@@ -266,6 +281,54 @@ class IntakeDashboard extends AbstractExternalModule
 
         // Save data using REDCap's saveData function
         return REDCap::saveData('58', 'json', json_encode($saveData), 'overwrite');
+    }
+
+    /**
+     * @param $payload
+     * @return string
+     */
+    public function checkUserDetailAccess($payload): string
+    {
+        try {
+            if (empty($payload['username']) || empty($payload['uid'])) {
+                throw new \Exception("Either username or UID is empty");
+            }
+
+            $username = $payload['username'];
+            $uid = $payload['uid'];
+            $parentId = $this->getSystemSetting('parent-project');
+            $projectSettings = $this->getProjectSettings($parentId);
+            $project = new Project($parentId);
+
+            $userEventName = $this->generateREDCapEventName($project, $projectSettings['user-info-event']);
+
+            // Fetch all intake IDs for the given user
+            $params = [
+                "return_format" => "json",
+                "project_id" => $parentId,
+                "redcap_event_name" => $userEventName,
+                "fields" => ["type", "intake_id", "record_id"],
+                "records" => $username,
+            ];
+
+            $userIntakes = json_decode(REDCap::getData($params), true);
+
+            // Iterate over to determine if current user has linked access to detail form
+            foreach ($userIntakes as $submission) {
+                if ($submission['intake_id'] === $uid) {
+                    return json_encode([
+                        "success" => true
+                    ]);
+                }
+            }
+
+            return json_encode([
+                "success" => false
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->handleGlobalError($e);
+        }
     }
 
 

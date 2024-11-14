@@ -36,7 +36,8 @@
 
 
     "auth-ajax-actions": [
-        "fetchIntakeParticipation"
+        "fetchIntakeParticipation",
+        "checkUserDetailAccess"
     ],
     "project-settings": [
         {
