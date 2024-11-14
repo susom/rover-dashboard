@@ -18,7 +18,7 @@ const router = createHashRouter([
         errorElement: <Error/>
     },
     {
-        path: '/dashboard',
+        path: '/detail/:id',
         element: (
             <IntakeDetail />
             // <ProtectedRoute>
