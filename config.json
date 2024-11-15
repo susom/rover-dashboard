@@ -41,8 +41,14 @@
     ],
     "project-settings": [
         {
-            "key": "universal-survey",
-            "name": "<strong>Universal Intake Survey</strong><br><i>The required survey all intake submissions begin with </i>",
+            "key": "universal-survey-form-immutable",
+            "name": "<strong>Universal Intake Survey (Immutable)</strong><br><i>The required survey all intake submissions begin with </i>",
+            "required": true,
+            "type": "form-list"
+        },
+        {
+            "key": "universal-survey-form-mutable",
+            "name": "<strong>Universal Intake Survey (Mutable)</strong><br><i>Required survey all intake submissions have that can be altered </i>",
             "required": true,
             "type": "form-list"
         },
