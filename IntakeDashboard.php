@@ -2,8 +2,8 @@
 
 namespace Stanford\IntakeDashboard;
 require_once "emLoggerTrait.php";
-require_once "classes/RepeatingForms.php";
-require_once "classes/Sanitizer.php";
+require_once "Utilities/RepeatingForms.php";
+require_once "Utilities/Sanitizer.php";
 
 
 use ExternalModules\AbstractExternalModule;
@@ -309,7 +309,7 @@ class IntakeDashboard extends AbstractExternalModule
                 foreach ($intakeDetails as $detail) {
                     if ($detail['record_id'] === $intake['intake_id']) {
                         $intake['intake_complete'] = $detail['intake_complete'] ?? null;
-                        $intake['pi_name'] = $detail['pi_name'] ?? null;
+                        $intake['pi_name'] = trim($detail['pi_f_name'] . " " . $detail['pi_l_name']);;
                         $intake['research_title'] = $detail['research_title'] ?? null;
                         break;
                     }
