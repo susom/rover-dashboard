@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Title, Blockquote, List} from '@mantine/core';
+import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Title, Blockquote, List, Loader} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { IconInfoCircle } from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
 import './dashboard.css';
@@ -7,8 +8,10 @@ import './dashboard.css';
 export function Dashboard() {
     const [intakes, setIntakes] = useState([])
     const [error, setError] = useState('')
-    const navigate = useNavigate()
+    const [loading, { toggle, close }] = useDisclosure(true);
 
+    const navigate = useNavigate()
+    console.log(loading)
     useEffect(() => {
         fetchIntakes()
     }, [])
@@ -89,7 +92,10 @@ export function Dashboard() {
                 <Divider my="md" />
                 <Card withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
-                        <Text fw={500}>Active</Text>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <Text fw={500}>Active</Text>
+                            {loading && <Loader size={32} />}
+                        </div>
                     </Card.Section>
                     <Card.Section>
                         <Table
@@ -103,7 +109,10 @@ export function Dashboard() {
 
                 <Card withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
-                        <Text fw={500}>Complete</Text>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <Text fw={500}>Complete</Text>
+                            {loading && <Loader size={32} />}
+                        </div>
                     </Card.Section>
                     <Card.Section>
                         <Table
