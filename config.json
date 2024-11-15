@@ -24,19 +24,45 @@
                 "icon": "gear",
                 "url" : "pages/root.php",
                 "show-header-and-footer": false
+            },
+            {
+                "name": "Splash",
+                "icon": "gear",
+                "url" : "pages/splash.php",
+                "show-header-and-footer": false
             }
         ]
     },
 
 
     "auth-ajax-actions": [
+        "fetchIntakeParticipation",
+        "checkUserDetailAccess"
     ],
     "project-settings": [
         {
-            "key": "universal-survey",
-            "name": "<strong>Universal Intake Survey</strong><br><i>The required survey all intake submissions begin with </i>",
+            "key": "universal-survey-form-immutable",
+            "name": "<strong>Universal Intake Survey (Immutable)</strong><br><i>The required survey all intake submissions begin with </i>",
             "required": true,
             "type": "form-list"
+        },
+        {
+            "key": "universal-survey-form-mutable",
+            "name": "<strong>Universal Intake Survey (Mutable)</strong><br><i>Required survey all intake submissions have that can be altered </i>",
+            "required": true,
+            "type": "form-list"
+        },
+        {
+            "key": "universal-survey-event",
+            "name": "<strong>Universal Survey Event</strong><br><i>The event / arm the universal survey records are saved within ",
+            "required": true,
+            "type": "event-list"
+        },
+        {
+            "key": "user-info-event",
+            "name": "<strong>User Information Event</strong><br><i>The event / arm the user joining records are saved within ",
+            "required": true,
+            "type": "event-list"
         },
         {
             "key": "child-project-list-description",
@@ -59,9 +85,15 @@
                 }
             ]
         }
+
     ],
     "system-settings": [
-
+        {
+            "key": "parent-project",
+            "name": "<strong>Parent project</strong><br><i>The project that houses the universal intake survey</i>",
+            "type": "project-id",
+            "required": true
+        }
     ],
 
     "compatibility": {

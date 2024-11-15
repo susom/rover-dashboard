@@ -1,7 +1,8 @@
 import React from "react";
 import { Login } from "../../views/Login/login.jsx";
 import { Dashboard } from '../../views/Dashboard/dashboard.jsx';
-
+import { IntakeDetail } from '../../views/IntakeDetail/intakeDetail.jsx';
+import { Error } from "../../views/Error/error.jsx";
 // import { ProtectedRoute } from "../protectedRoute/ProtectedRoute.jsx";
 // import { AuthProvider } from "../../Hooks/useAuth.jsx";
 
@@ -13,13 +14,14 @@ import {
 const router = createHashRouter([
     {
         path: '/',
-        element: <Login />
+        element: <Dashboard />,
+        errorElement: <Error/>
     },
     {
-        path: '/dashboard',
+        path: '/detail/:id',
         element: (
+            <IntakeDetail />
             // <ProtectedRoute>
-                <Dashboard />
             // </ProtectedRoute>
         )
     }

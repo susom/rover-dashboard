@@ -4,8 +4,11 @@
 
 $module->injectJSMO();
 $files = $module->generateAssetFiles();
-$urls = $module->fetchRequiredSurveys();
-//$surveys = $module->fetchRequiredSurveys();
+//$test = $module->checkUserDetailAccess("redcap", "1");
+// Inject username info to dom
+$globalUsername = $_SESSION['username'];
+//$urls = $module->fetchRequiredSurveys();
+//$surveys = $module->fetchIntakeParticipation();
 ?>
 
 <!DOCTYPE html>
@@ -18,6 +21,9 @@ $urls = $module->fetchRequiredSurveys();
     <?php foreach ($files as $file): ?>
         <?= $file ?>
     <?php endforeach; ?>
+    <script>
+        const globalUsername = <?php echo json_encode($globalUsername); ?>;
+    </script>
 </head>
 <body>
     <div id="root"></div>
