@@ -116,6 +116,9 @@ class IntakeDashboard extends AbstractExternalModule
         $repeat_instance = 1
     )
     {
+        $parent_id = $this->getSystemSetting('parent-project');
+        $pSettings = $this->getProjectSettings($parent_id);
+
         $detailsParams = [
             "return_format" => "json",
             "project_id" => $project_id,
@@ -123,14 +126,95 @@ class IntakeDashboard extends AbstractExternalModule
         ];
 
         $completedIntake = json_decode(REDCap::getData($detailsParams), true);
-        if(!empty($completedIntake))
-            $this->createUserLinkingRecord(reset($completedIntake));
+        if(!empty($completedIntake)){
+            if($instrument === $pSettings['universal-survey-form-immutable']) {
+                $fields = reset($completedIntake);
+
+                $requesterSunetSid = $fields['requester_sunet_sid'];
+                $piSunetSid = $fields['pi_sunet_sid'];
+                $primaryContactSunetSid = $fields['sunet_sid'];
+
+                // Determine username
+                $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
+                $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
+                $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
+
+                $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
+
+                foreach ($usernames as $username) {
+                    if (!empty($username)) {
+                        $this->saveUser($username, $fields);
+                    }
+                }
+
+            } else if($instrument === $pSettings['universal-survey-form-mutable']) {
+                //TODO implement mutable survey
+            }
+        }
     }
 
-    public function createUserLinkingRecord($intake) {
-        // Create each link table entry per user
-        $name = $intake['pi_name'];
-        $first_name = $intake['first_name'];
+    public function determineREDCapUsername($su_sid_field, $email_field) {
+        if (!isset($email_field)) {
+            return null; // Return null if email field is not set
+        }
+
+        $domains = [
+            'stanford.edu' => $su_sid_field,
+            'stanfordchildrens.org' => $email_field,
+            'stanfordhealthcare.org' => $su_sid_field . '@stanfordhealthcare.org',
+        ];
+
+        foreach ($domains as $domain => $returnValue) {
+            if (strpos($email_field, $domain) !== false) {
+                return $returnValue;
+            }
+        }
+
+        return null; // Return null if no domain matches
+    }
+
+    /**
+     * @param $username
+     * @return mixed
+     * @throws Exception
+     * Saves a user in the hash table with reference to a universal intake submission
+     */
+    public function saveUser($username, $formData)
+    {
+        $parent_id = $this->getSystemSetting('parent-project');
+        $pSettings = $this->getProjectSettings($parent_id);
+        $proj = new Project($parent_id);
+
+        // Find the event ID for the "User" event
+        $event_id = $pSettings['user-info-event'];
+
+        // Ensure the event ID and form name are found
+        if ($event_id === null || !isset($proj->eventsForms[$event_id])) {
+            throw new Exception("User event or form not found.");
+        }
+
+        $form_name = reset($proj->eventsForms[$event_id]);
+        $event_name = $this->generateREDCapEventName($proj, $event_id);
+        // Create a RepeatingForms instance and get the next instance ID
+        $rForm = new RepeatingForms('user_info', $event_id, $parent_id);
+        $next_instance_id = $rForm->getNextInstanceId($username);
+
+        // No need to check if the linkage already exists in user table, intake ID will always be unique
+        // Prepare data for saving
+        $saveData = [
+            [
+                "record_id" => $username,
+                "type" => "Secondary",
+                "intake_id" => $formData['record_id'],
+                "redcap_event_name" => $event_name,
+                "redcap_repeat_instrument" => $form_name,
+                "redcap_repeat_instance" => $next_instance_id,
+                "{$form_name}_complete" => 2
+            ]
+        ];
+
+        // Save data using REDCap's saveData function
+        return REDCap::saveData('58', 'json', json_encode($saveData), 'overwrite');
     }
 
     /**
@@ -143,6 +227,7 @@ class IntakeDashboard extends AbstractExternalModule
         $sanitizer = new Sanitizer();
         return $sanitizer->sanitize($payload);
     }
+
 
     /**
      * @param $e
@@ -157,7 +242,6 @@ class IntakeDashboard extends AbstractExternalModule
             "success" => false
         ]);
     }
-
 
     /**
      * @param $proj
@@ -237,50 +321,6 @@ class IntakeDashboard extends AbstractExternalModule
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
         }
-    }
-
-    /**
-     * @param $username
-     * @return mixed
-     * @throws Exception
-     * Saves a user in the hash table with reference to a universal intake submission
-     */
-    public function saveUser($username)
-    {
-        $parent_id = $this->getSystemSetting('parent-project');
-        $pSettings = $this->getProjectSettings($parent_id);
-        $proj = new Project($parent_id);
-
-        // Find the event ID for the "User" event
-        $event_id = $pSettings['user-info-event'];
-
-        // Ensure the event ID and form name are found
-        if ($event_id === null || !isset($proj->eventsForms[$event_id])) {
-            throw new Exception("User event or form not found.");
-        }
-
-        $form_name = reset($proj->eventsForms[$event_id]);
-        $event_name = $this->generateREDCapEventName($proj, $event_id);
-        // Create a RepeatingForms instance and get the next instance ID
-        $rForm = new RepeatingForms('user_info', $event_id, $parent_id);
-        $next_instance_id = $rForm->getNextInstanceId($username);
-
-        // Prepare data for saving
-        //TODO Implement type naming , intake parameter
-        $saveData = [
-            [
-                "record_id" => $username,
-                "type" => "Secondary",
-                "intake_id" => "5",
-                "redcap_event_name" => $event_name,
-                "redcap_repeat_instrument" => $form_name,
-                "redcap_repeat_instance" => $next_instance_id,
-                "{$form_name}_complete" => 2
-            ]
-        ];
-
-        // Save data using REDCap's saveData function
-        return REDCap::saveData('58', 'json', json_encode($saveData), 'overwrite');
     }
 
     /**
