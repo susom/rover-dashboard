@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Title, Blockquote, List, Loader} from '@mantine/core';
+import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconInfoCircle } from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
@@ -26,6 +26,7 @@ export function Dashboard() {
 
     const successCallback = (res) => {
         console.log('success', res)
+        toggle()
         setIntakes(res?.data)
     }
 
@@ -82,8 +83,8 @@ export function Dashboard() {
             <AppShell.Main style={{backgroundColor: 'rgb(248,249,250)'}}>
                 <Title order={3}>Welcome to your intake dashboard</Title>
                 <Text c="dimmed">Logged in as: {globalUsername}</Text>
-                <Blockquote color="blue" iconSize={36} mt="xl" radius="md" icon={<IconInfoCircle/>}>
-                    <List size="md">
+                <Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>
+                    <List size="sm">
                         <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
                         <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>
                         <List.Item>Missing a submission? Please contact your PI</List.Item>
@@ -105,7 +106,7 @@ export function Dashboard() {
                     </Card.Section>
                 </Card>
 
-                <div style={{marginTop: '100px'}}></div>
+                <div style={{marginTop: '60px'}}></div>
 
                 <Card withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
