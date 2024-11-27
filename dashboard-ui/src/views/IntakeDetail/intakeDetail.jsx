@@ -7,6 +7,8 @@ import {
     Text,
     Stepper,
     Button,
+    Badge,
+    Timeline,
     Stack,
     Title,
     Blockquote,
@@ -15,6 +17,7 @@ import {
 } from "@mantine/core";
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
+import {useNavigate} from "react-router-dom";
 
 export function IntakeDetail() {
     const [overallStep, setOverallStep] = useState(1);
@@ -22,11 +25,13 @@ export function IntakeDetail() {
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(""); // Track active tab
     const [data, setData] = useState(null); // Stubbed dynamic data
+    const navigate = useNavigate();
 
     const nextStep = () =>
         setActiveStep((current) => (current < overallSteps.length - 1 ? current + 1 : current));
     const prevStep = () =>
         setActiveStep((current) => (current > 0 ? current - 1 : current));
+
 
     // Stubbed dynamic data
     useEffect(() => {
@@ -109,19 +114,20 @@ export function IntakeDetail() {
                 }}
             >
                 {/* Header with button */}
-                <Group position="apart" align="center" mb="lg" noWrap>
+                <Group position="apart" align="center" mb="lg" noWrap style={{ width: '100%' }}>
                     <div>
-                        <Title order={3}>Welcome to your intake dashboard</Title>
-                        <Text c="dimmed">Logged in as: {user.username}</Text>
+                        <Title order={3}>Intake Detail</Title>
+                        <Text c="dimmed">Logged in as: {globalUsername}</Text>
                     </div>
                     <Button
-                        size="lg"
+                        size="sm"
                         color="blue"
                         radius="md"
                         component="a"
-                        href={user.intakesDashboardLink}
+                        onClick={() => navigate('/')}
+                        style={{ marginLeft: 'auto' }} // Ensure it aligns properly
                     >
-                        My Intakes Dashboard
+                        Intake Home
                     </Button>
                 </Group>
 
@@ -152,18 +158,26 @@ export function IntakeDetail() {
                     </List>
                 </Blockquote>
 
-                {/* Overall Stepper */}
+                <Divider label="Universal Intake submissions" labelPosition="center" my="md" />
+
                 <Card shadow="sm" p="lg" my="lg">
-                    <Stepper active={overallStep} onStepClick={setOverallStep}>
-                        {overallSteps.map((step, index) => (
-                            <Stepper.Step key={index} label={step}>
-                                Overall progress for {step}
-                            </Stepper.Step>
-                        ))}
-                    </Stepper>
+                    <Timeline active={1} lineWidth={3} bulletSize={18}>
+                        <Timeline.Item title="Universal Intake submission I">
+                            <Text c="dimmed" size="sm">View prior survey submission <Text variant="link" component="span" inherit>here</Text></Text>
+                        </Timeline.Item>
+                        <Timeline.Item title="Universal Intake submission II">
+                            <Text c="dimmed" size="sm">View or Edit prior survey submission<Text variant="link" component="span" inherit>here</Text></Text>
+                        </Timeline.Item>
+                        <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
+                            <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>
+                        </Timeline.Item>
+                    </Timeline>
+                    {/*<Text>Prior submissions</Text>*/}
+                    {/*<Label></Label>*/}
+                    {/*<Button>Look</Button>*/}
                 </Card>
 
-                <Divider my="md" />
+                <Divider label="Requested services" labelPosition="center" my="md" />
 
                 <Grid style={{ height: "100%" }} gutter="md">
                     {/* Tabs */}
@@ -195,7 +209,14 @@ export function IntakeDetail() {
                             <Text align="center" size="xl" weight={700}>
                                 {activeTab}
                             </Text>
-                            <Text mt="md">{tabs.find((tab) => tab.name === activeTab)?.content}</Text>
+                            {/*<Text mt="md">{tabs.find((tab) => tab.name === activeTab)?.content}</Text>*/}
+                            <Stepper active={overallStep} onStepClick={setOverallStep}>
+                                {overallSteps.map((step, index) => (
+                                    <Stepper.Step key={index} label={step}>
+                                        Overall progress for {step}
+                                    </Stepper.Step>
+                                ))}
+                            </Stepper>
                             <List spacing="sm" mt="lg" size="sm" withPadding>
                                 {tabLinks[activeTab]?.map((item, index) => (
                                     <List.Item
