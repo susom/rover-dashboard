@@ -80,9 +80,16 @@
                     "key": "project-id",
                     "name": "<b>Project</b>",
                     "type": "project-id",
-                    "required": true,
-                    "repeatable": true
+                    "required": true
+                },
+                {
+                    "key": "mapping-field",
+                    "name": "<b>Universal intake mapping field</b>",
+                    "type": "field-list",
+                    "required": true
                 }
+
+
             ]
         }
 
