@@ -3,6 +3,7 @@ import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, 
 import { useDisclosure } from '@mantine/hooks';
 import { IconInfoCircle } from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
+import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
 import './dashboard.css';
 
 export function Dashboard() {
@@ -17,12 +18,36 @@ export function Dashboard() {
     }, [])
 
     const fetchIntakes = () => {
-        let jsmoModule;
-        if(import.meta?.env?.MODE !== 'development')
-            jsmoModule = ExternalModules.Stanford.IntakeDashboard
-        jsmoModule.fetchIntakeParticipation(successCallback, errorCallback)
+        const useFakeData = true; // Set this to false to fetch real data
 
-    }
+        if (useFakeData) {
+            // Fake data for testing, remove this block when using real data
+            toggle();
+            setIntakes([
+                {
+                    intake_id: "12345",
+                    type: "Survey",
+                    research_title: "Sample Study 1",
+                    pi_name: "Dr. John Doe",
+                    intake_complete: "Incomplete",
+                },
+                {
+                    intake_id: "67890",
+                    type: "Interview",
+                    research_title: "Sample Study 2",
+                    pi_name: "Dr. Jane Smith",
+                    intake_complete: "Complete",
+                },
+            ]);
+        } else {
+            // Real data fetching
+            let jsmoModule;
+            if (import.meta?.env?.MODE !== 'development')
+                jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+            jsmoModule.fetchIntakeParticipation(successCallback, errorCallback);
+        }
+    };
+
 
     const successCallback = (res) => {
         console.log('success', res)
@@ -70,15 +95,7 @@ export function Dashboard() {
             padding="md"
         >
             <AppShell.Header>
-                <Group h="100%" px="md">
-                    <Image src="https://storage.googleapis.com/group-chat-therapy/stanford-logo.svg"
-                           h={30}
-                           w="auto"
-                           fit="contain"
-                           alt="stanford_image"
-                    />
-
-                </Group>
+                <AppHeader/>
             </AppShell.Header>
             <AppShell.Main style={{backgroundColor: 'rgb(248,249,250)'}}>
                 <Title order={3}>Welcome to your intake dashboard</Title>

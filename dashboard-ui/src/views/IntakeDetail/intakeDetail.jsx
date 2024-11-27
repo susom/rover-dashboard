@@ -1,93 +1,242 @@
-import React, {useState, useEffect} from "react";
-
-import {Button, Card, Grid, Group, Text, Stepper} from '@mantine/core';
-import {useParams} from "react-router";
-import {useNavigate} from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import {
+    AppShell,
+    Card,
+    Grid,
+    Group,
+    Text,
+    Stepper,
+    Button,
+    Stack,
+    Title,
+    Blockquote,
+    List,
+    Divider,
+} from "@mantine/core";
+import { AppHeader } from "../../components/AppHeader/appHeader";
+import { IconInfoCircle } from "@tabler/icons-react";
 
 export function IntakeDetail() {
-    const stepCount = 5; // Change this number to define how many steps you want
+    const [overallStep, setOverallStep] = useState(1);
     const [activeStep, setActiveStep] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
-    const nextStep = () => setActiveStep((current) => (current < stepCount - 1 ? current + 1 : current));
-    const prevStep = () => setActiveStep((current) => (current > 0 ? current - 1 : current));
-    const params = useParams();
-    const navigate = useNavigate()
+    const [activeTab, setActiveTab] = useState(""); // Track active tab
+    const [data, setData] = useState(null); // Stubbed dynamic data
 
+    const nextStep = () =>
+        setActiveStep((current) => (current < overallSteps.length - 1 ? current + 1 : current));
+    const prevStep = () =>
+        setActiveStep((current) => (current > 0 ? current - 1 : current));
+
+    // Stubbed dynamic data
     useEffect(() => {
-        let jsmoModule;
+        console.warn("Using stubbed data for UI testing");
 
-        const successCallback = (res) => {
-            console.log('success', res)
-            setIsLoading(false)
+        // Simulating async data fetching
+        setTimeout(() => {
+            setData({
+                projectInfo: {
+                    name: "Research Study 1",
+                    acronym: "RS1",
+                    irbNumber: "123456789",
+                    oncoreNumber: "987654321",
+                },
+                tabs: [
+                    { name: "IDS Intake", content: "This is the content for IDS Intake." },
+                    { name: "Radiology Intake", content: "Radiology Intake-specific information goes here." },
+                    { name: "Lab Intake", content: "Lab Intake-related content goes here." },
+                ],
+                overallSteps: [
+                    "Feasibility",
+                    "Pricing",
+                    "Docs/Outputs",
+                    "Approval",
+                    "Finalized",
+                ],
+                tabLinks: {
+                    "IDS Intake": [
+                        { label: "Step 1: Complete this intake", completed: true, link: "#" },
+                        { label: "Step 2: Upload documents", completed: false, link: "#" },
+                        { label: "Step 3: Review approvals", completed: true, link: "#" },
+                    ],
+                    "Radiology Intake": [
+                        { label: "Step 1: Fill intake form", completed: true, link: "#" },
+                        { label: "Step 2: Verify patient data", completed: false, link: "#" },
+                    ],
+                    "Lab Intake": [
+                        { label: "Step 1: Initiate lab test", completed: false, link: "#" },
+                        { label: "Step 2: Submit samples", completed: true, link: "#" },
+                    ],
+                },
+                user: {
+                    username: "irvins",
+                    intakesDashboardLink: "/my-intakes-dashboard", // Dynamic link
+                },
+            });
+            setActiveTab("IDS Intake"); // Default to first tab
+            setIsLoading(false);
+        }, 500); // Simulate async call
+    }, []);
 
-        }
-
-        const errorCallback = (err) => {
-            console.error('error', err)
-            navigate('/')
-        }
-
-        if(import.meta?.env?.MODE !== 'development')
-            jsmoModule = ExternalModules.Stanford.IntakeDashboard
-
-        // globalUsername injected via root.php
-        let payload = {username: globalUsername, uid: params['id']}
-        jsmoModule.checkUserDetailAccess(payload, successCallback, errorCallback)
-    }, [])
-
-    console.log(params)
-    // Generate step descriptions dynamically but with the first step being fixed
-    const steps = [
-        {
-            label: 'Universal intake survey',
-            description: 'Submitted: Thursday October 17 2024',
-            content: 'Content here',
-        },
-        ...Array.from({ length: stepCount - 1 }, (_, index) => ({
-            label: `Step ${index + 2}`,
-            description: `This is step ${index + 2}`,
-            content: `Step ${index + 2}: Content for this step goes here.`,
-        })),
-    ];
-
-    if (isLoading) {
-        return null; // Render nothing while loading
+    if (isLoading || !data) {
+        return (
+            <div
+                style={{
+                    width: "100vw",
+                    height: "100vh",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                }}
+            >
+                <Text>Loading...</Text>
+            </div>
+        );
     }
 
+    const { projectInfo, tabs, overallSteps, tabLinks, user } = data;
+
     return (
-        <div style={{width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', padding: '30px'}}>
-            <Grid style={{height: '100%'}}>
-                <Grid.Col span={12} style={{padding: 0}}>
-                    <Card shadow="sm" p="lg" style={{height: '100%'}}>
-                        <Text align="center" size="xl" weight={700}>
-                            Welcome to your intake
-                        </Text>
+        <AppShell header={{ height: 40 }} padding="md">
+            <AppShell.Header>
+                <AppHeader />
+            </AppShell.Header>
+            <AppShell.Main
+                style={{
+                    backgroundColor: "rgb(248,249,250)",
+                    padding: "30px",
+                    margin: "30px 0 0 0",
+                }}
+            >
+                {/* Header with button */}
+                <Group position="apart" align="center" mb="lg" noWrap>
+                    <div>
+                        <Title order={3}>Welcome to your intake dashboard</Title>
+                        <Text c="dimmed">Logged in as: {user.username}</Text>
+                    </div>
+                    <Button
+                        size="lg"
+                        color="blue"
+                        radius="md"
+                        component="a"
+                        href={user.intakesDashboardLink}
+                    >
+                        My Intakes Dashboard
+                    </Button>
+                </Group>
 
-                        <Stepper
-                            active={activeStep}
-                            // onStepClick={setActiveStep}
-                            breakpoint="sm"
-                            style={{marginTop: '20px'}}
-                        >
-                            {steps.map((step, index) => (
-                                <Stepper.Step key={index} label={step.label} description={step.description}>
-                                    Instructions:
-                                    <Text>{step.content}</Text>
-                                </Stepper.Step>
+                {/* Project Info */}
+                <Blockquote
+                    color="blue"
+                    iconSize={36}
+                    mt="lg"
+                    radius="md"
+                    icon={<IconInfoCircle />}
+                >
+                    <Text fw={500} mb="xs">
+                        Project Info
+                    </Text>
+                    <List size="sm" spacing="xs">
+                        <List.Item>
+                            <b>Project Name:</b> {projectInfo.name}
+                        </List.Item>
+                        <List.Item>
+                            <b>Project Acronym:</b> {projectInfo.acronym}
+                        </List.Item>
+                        <List.Item>
+                            <b>IRB#:</b> {projectInfo.irbNumber}
+                        </List.Item>
+                        <List.Item>
+                            <b>Oncore#:</b> {projectInfo.oncoreNumber}
+                        </List.Item>
+                    </List>
+                </Blockquote>
+
+                {/* Overall Stepper */}
+                <Card shadow="sm" p="lg" my="lg">
+                    <Stepper active={overallStep} onStepClick={setOverallStep}>
+                        {overallSteps.map((step, index) => (
+                            <Stepper.Step key={index} label={step}>
+                                Overall progress for {step}
+                            </Stepper.Step>
+                        ))}
+                    </Stepper>
+                </Card>
+
+                <Divider my="md" />
+
+                <Grid style={{ height: "100%" }} gutter="md">
+                    {/* Tabs */}
+                    <Grid.Col
+                        span={3}
+                        style={{
+                            backgroundColor: "#f8f9fa",
+                            padding: "20px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <Stack spacing="md">
+                            {tabs.map((tab) => (
+                                <Button
+                                    key={tab.name}
+                                    variant={activeTab === tab.name ? "filled" : "light"}
+                                    fullWidth
+                                    onClick={() => setActiveTab(tab.name)}
+                                >
+                                    {tab.name}
+                                </Button>
                             ))}
-                        </Stepper>
+                        </Stack>
+                    </Grid.Col>
 
-                        <Group position="center" mt="xl">
-                            <Button variant="default" onClick={prevStep} disabled={activeStep === 0}>
-                                Back
-                            </Button>
-                            <Button onClick={nextStep} disabled={activeStep === stepCount - 1}>
-                                {activeStep === stepCount - 1 ? 'Finish' : 'Next'}
-                            </Button>
-                        </Group>
-                    </Card>
-                </Grid.Col>
-            </Grid>
-        </div>
+                    {/* Tab Content */}
+                    <Grid.Col span={9}>
+                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+                            <Text align="center" size="xl" weight={700}>
+                                {activeTab}
+                            </Text>
+                            <Text mt="md">{tabs.find((tab) => tab.name === activeTab)?.content}</Text>
+                            <List spacing="sm" mt="lg" size="sm" withPadding>
+                                {tabLinks[activeTab]?.map((item, index) => (
+                                    <List.Item
+                                        key={index}
+                                        icon={
+                                            item.completed ? (
+                                                <input
+                                                    type="checkbox"
+                                                    checked
+                                                    readOnly
+                                                    style={{
+                                                        pointerEvents: "none",
+                                                        marginRight: "10px",
+                                                        transform: "scale(1.5)",
+                                                    }}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type="checkbox"
+                                                    style={{
+                                                        pointerEvents: "none",
+                                                        marginRight: "10px",
+                                                        transform: "scale(1.5)",
+                                                    }}
+                                                />
+                                            )
+                                        }
+                                    >
+                                        <a
+                                            href={item.link}
+                                            style={{ textDecoration: "none", color: "inherit" }}
+                                        >
+                                            {item.label}
+                                        </a>
+                                    </List.Item>
+                                ))}
+                            </List>
+                        </Card>
+                    </Grid.Col>
+                </Grid>
+            </AppShell.Main>
+        </AppShell>
     );
 }
