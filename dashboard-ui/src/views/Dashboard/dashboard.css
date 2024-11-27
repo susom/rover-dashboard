@@ -1,3 +1,7 @@
 .mantine-Blockquote-icon {
     background-color: rgb(248, 249, 250);
 }
+
+.mantine-Blockquote-root {
+    padding: 20px;
+}

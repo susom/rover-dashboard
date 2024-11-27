@@ -1,8 +1,9 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Title, Blockquote, List, Loader} from '@mantine/core';
+import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconInfoCircle } from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
+import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
 import './dashboard.css';
 
 export function Dashboard() {
@@ -17,15 +18,40 @@ export function Dashboard() {
     }, [])
 
     const fetchIntakes = () => {
-        let jsmoModule;
-        if(import.meta?.env?.MODE !== 'development')
-            jsmoModule = ExternalModules.Stanford.IntakeDashboard
-        jsmoModule.fetchIntakeParticipation(successCallback, errorCallback)
+        const useFakeData = false; // Set this to false to fetch real data
 
-    }
+        if (useFakeData) {
+            // Fake data for testing, remove this block when using real data
+            toggle();
+            setIntakes([
+                {
+                    intake_id: "12345",
+                    type: "Survey",
+                    research_title: "Sample Study 1",
+                    pi_name: "Dr. John Doe",
+                    intake_complete: "Incomplete",
+                },
+                {
+                    intake_id: "67890",
+                    type: "Interview",
+                    research_title: "Sample Study 2",
+                    pi_name: "Dr. Jane Smith",
+                    intake_complete: "Complete",
+                },
+            ]);
+        } else {
+            // Real data fetching
+            let jsmoModule;
+            if (import.meta?.env?.MODE !== 'development')
+                jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+            jsmoModule.fetchIntakeParticipation(successCallback, errorCallback);
+        }
+    };
+
 
     const successCallback = (res) => {
         console.log('success', res)
+        toggle()
         setIntakes(res?.data)
     }
 
@@ -53,14 +79,14 @@ export function Dashboard() {
 
     const tableData = {
         caption: 'List of intakes you have been added to',
-        head: ['UID', 'Listed Contact Type', 'Study Title', 'PI Name', 'Completion Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.type, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
+        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
     const finishedTable = {
         caption: 'List of completed intakes',
-        head: ['UID', 'Listed Contact Type', 'Study Title', 'PI Name', 'Completion Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.type, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
+        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
     return (
@@ -69,21 +95,13 @@ export function Dashboard() {
             padding="md"
         >
             <AppShell.Header>
-                <Group h="100%" px="md">
-                    <Image src="https://storage.googleapis.com/group-chat-therapy/stanford-logo.svg"
-                           h={30}
-                           w="auto"
-                           fit="contain"
-                           alt="stanford_image"
-                    />
-
-                </Group>
+                <AppHeader/>
             </AppShell.Header>
             <AppShell.Main style={{backgroundColor: 'rgb(248,249,250)'}}>
                 <Title order={3}>Welcome to your intake dashboard</Title>
                 <Text c="dimmed">Logged in as: {globalUsername}</Text>
-                <Blockquote color="blue" iconSize={36} mt="xl" radius="md" icon={<IconInfoCircle/>}>
-                    <List size="md">
+                <Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>
+                    <List size="sm">
                         <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
                         <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>
                         <List.Item>Missing a submission? Please contact your PI</List.Item>
@@ -105,7 +123,7 @@ export function Dashboard() {
                     </Card.Section>
                 </Card>
 
-                <div style={{marginTop: '100px'}}></div>
+                <div style={{marginTop: '60px'}}></div>
 
                 <Card withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
