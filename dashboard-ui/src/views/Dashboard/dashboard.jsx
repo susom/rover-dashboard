@@ -18,7 +18,7 @@ export function Dashboard() {
     }, [])
 
     const fetchIntakes = () => {
-        const useFakeData = true; // Set this to false to fetch real data
+        const useFakeData = false; // Set this to false to fetch real data
 
         if (useFakeData) {
             // Fake data for testing, remove this block when using real data
@@ -79,14 +79,14 @@ export function Dashboard() {
 
     const tableData = {
         caption: 'List of intakes you have been added to',
-        head: ['UID', 'Listed Contact Type', 'Study Title', 'PI Name', 'Completion Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.type, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
+        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
     const finishedTable = {
         caption: 'List of completed intakes',
-        head: ['UID', 'Listed Contact Type', 'Study Title', 'PI Name', 'Completion Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.type, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
+        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
     return (
