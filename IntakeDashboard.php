@@ -11,6 +11,7 @@ use ExternalModules;
 use Exception;
 use REDCap;
 use Project;
+use Survey;
 
 
 class IntakeDashboard extends AbstractExternalModule
@@ -43,6 +44,7 @@ class IntakeDashboard extends AbstractExternalModule
      */
     public function generateAssetFiles(): array
     {
+        $this->fetchRequiredSurveys(1);
         $cwd = $this->getModulePath();
         $assets = [];
 
@@ -105,6 +107,19 @@ class IntakeDashboard extends AbstractExternalModule
         };
     }
 
+    /**
+     * @param $project_id
+     * @param $record
+     * @param $instrument
+     * @param $event_id
+     * @param $group_id
+     * @param $survey_hash
+     * @param $response_id
+     * @param $repeat_instance
+     * @return void
+     * @throws Exception
+     * Function that runs on each survey completion
+     */
     public function redcap_survey_complete(
         $project_id,
         $record = null,
@@ -261,6 +276,7 @@ class IntakeDashboard extends AbstractExternalModule
 
     /**
      * Fetches intake participation data for the current user.
+     * Rendered on the intake dashboard view
      *
      * @return string|false JSON-encoded string of intake participation data, or false on error.
      */
@@ -308,6 +324,8 @@ class IntakeDashboard extends AbstractExternalModule
             foreach ($userIntakes as &$intake) {
                 foreach ($intakeDetails as $detail) {
                     if ($detail['record_id'] === $intake['intake_id']) {
+                        $survey_id = $proj->forms[$pSettings['universal-survey-form-immutable']]['survey_id'];
+                        $intake['completion_timestamp'] = Survey::isResponseCompleted($survey_id, $detail['record_id'], $pSettings['universal-survey-event'], 1, true);
                         $intake['intake_complete'] = $detail['intake_complete'] ?? null;
                         $intake['pi_name'] = trim($detail['pi_f_name'] . " " . $detail['pi_l_name']);;
                         $intake['research_title'] = $detail['research_title'] ?? null;
@@ -372,16 +390,53 @@ class IntakeDashboard extends AbstractExternalModule
     }
 
 
-    public function fetchRequiredSurveys()
+    public function fetchRequiredSurveys($id)
     {
         try {
 //            $settings = $this->getSystemSettings();
             $child_ids = $this->getSystemSetting('project-id');
             $parent_id = $this->getSystemSetting('parent-project');
-
+            $projectSettings = $this->getProjectSettings($parent_id);
             if (empty($parent_id) || empty($child_ids))
                 throw new \Exception("Parent project or child projects have not been configured properly, exiting");
-            $universal_survey_form_name = $this->getProjectSetting('universal-survey', $parent_id);
+            $universal_survey_form_name = $this->getProjectSetting('universal-survey-form-immutable', $parent_id);
+
+            $detailsParams = [
+                "return_format" => "json",
+                "project_id" => $parent_id,
+                "records" => $id
+            ];
+
+            $completedIntake = json_decode(REDCap::getData($detailsParams), true);
+            $requiredChildPIDs = [];
+
+            foreach (reset($completedIntake) as $key => $value) {
+                // Check if the key matches the pattern "serv_map_" where x is an integer
+                if (preg_match('/^serv_map_\d+$/', $key) && $value === "1") {
+                    $key = array_search($key, $projectSettings['mapping-field']);
+
+                    if($key !== false) { //can return 0 index
+                        $requiredChildPIDs[] = $projectSettings['project-id'][$key];
+                    }
+                }
+            }
+
+            // Iterate through each child project and generate a record for a survey
+            foreach($requiredChildPIDs as $value) {
+                $a = new \Project($value);
+                $surveyInfo = $a->surveys;
+                $saveData = [
+                    [
+                        "record_id" => 1,
+                        "abc" => ""
+                    ]
+                ];
+
+                // Save data using REDCap's saveData function
+                $a = REDCap::saveData($value, 'json', json_encode($saveData), 'overwrite');
+                $test = Survey::getSurveyLinkFromParticipantId(1);
+                $abd = 1;
+            }
 
             $a = new \Project($parent_id);
             $surveyInfo = $a->surveys;
