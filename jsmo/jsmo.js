@@ -29,6 +29,16 @@
                   errCallback(parsed)
               }
           })
+        },
+        fetchRequiredSurveys: function(payload, callback, errCallback) {
+            module.ajax('fetchRequiredSurveys', payload).then(function (res) {
+                let parsed = JSON.parse(res)
+                if(parsed.success){
+                    callback(parsed);
+                } else {
+                    errCallback(parsed)
+                }
+            })
         }
     });
 }
