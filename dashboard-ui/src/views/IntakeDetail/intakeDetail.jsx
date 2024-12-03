@@ -17,7 +17,9 @@ import {
 } from "@mantine/core";
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
-import {useNavigate} from "react-router-dom";
+import { IconPhoto, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
+
+import {useNavigate, useParams} from "react-router-dom";
 
 export function IntakeDetail() {
     const [overallStep, setOverallStep] = useState(1);
@@ -25,6 +27,8 @@ export function IntakeDetail() {
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(""); // Track active tab
     const [data, setData] = useState(null); // Stubbed dynamic data
+
+    const params = useParams()
     const navigate = useNavigate();
 
     const nextStep = () =>
@@ -32,55 +36,73 @@ export function IntakeDetail() {
     const prevStep = () =>
         setActiveStep((current) => (current > 0 ? current - 1 : current));
 
+    const successCallback = (res) => {
+        console.log('success', res)
+        setData(res?.data)
+
+        setActiveTab(res?.data[0]['title']); // Default to first tab
+        setIsLoading(false);
+    }
+
+    const errorCallback = (err) => {
+        console.error('error', err)
+        navigate('/')
+    }
 
     // Stubbed dynamic data
     useEffect(() => {
         console.warn("Using stubbed data for UI testing");
+        let jsmoModule;
+        if (import.meta?.env?.MODE !== 'development')
+            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
 
+        jsmoModule.getUserDetail({'username': globalUsername, 'uid': params?.id}, successCallback, errorCallback)
+
+        // jsmo.fetchRequiredSurveys
         // Simulating async data fetching
-        setTimeout(() => {
-            setData({
-                projectInfo: {
-                    name: "Research Study 1",
-                    acronym: "RS1",
-                    irbNumber: "123456789",
-                    oncoreNumber: "987654321",
-                },
-                tabs: [
-                    { name: "IDS Intake", content: "This is the content for IDS Intake." },
-                    { name: "Radiology Intake", content: "Radiology Intake-specific information goes here." },
-                    { name: "Lab Intake", content: "Lab Intake-related content goes here." },
-                ],
-                overallSteps: [
-                    "Feasibility",
-                    "Pricing",
-                    "Docs/Outputs",
-                    "Approval",
-                    "Finalized",
-                ],
-                tabLinks: {
-                    "IDS Intake": [
-                        { label: "Step 1: Complete this intake", completed: true, link: "#" },
-                        { label: "Step 2: Upload documents", completed: false, link: "#" },
-                        { label: "Step 3: Review approvals", completed: true, link: "#" },
-                    ],
-                    "Radiology Intake": [
-                        { label: "Step 1: Fill intake form", completed: true, link: "#" },
-                        { label: "Step 2: Verify patient data", completed: false, link: "#" },
-                    ],
-                    "Lab Intake": [
-                        { label: "Step 1: Initiate lab test", completed: false, link: "#" },
-                        { label: "Step 2: Submit samples", completed: true, link: "#" },
-                    ],
-                },
-                user: {
-                    username: "irvins",
-                    intakesDashboardLink: "/my-intakes-dashboard", // Dynamic link
-                },
-            });
-            setActiveTab("IDS Intake"); // Default to first tab
-            setIsLoading(false);
-        }, 500); // Simulate async call
+        // setTimeout(() => {
+        //     setData({
+        //         projectInfo: {
+        //             name: "Research Study 1",
+        //             acronym: "RS1",
+        //             irbNumber: "123456789",
+        //             oncoreNumber: "987654321",
+        //         },
+        //         tabs: [
+        //             { name: "IDS Intake", content: "This is the content for IDS Intake." },
+        //             { name: "Radiology Intake", content: "Radiology Intake-specific information goes here." },
+        //             { name: "Lab Intake", content: "Lab Intake-related content goes here." },
+        //         ],
+        //         overallSteps: [
+        //             "Feasibility",
+        //             "Pricing",
+        //             "Docs/Outputs",
+        //             "Approval",
+        //             "Finalized",
+        //         ],
+        //         tabLinks: {
+        //             "IDS Intake": [
+        //                 { label: "Step 1: Complete this intake", completed: true, link: "#" },
+        //                 { label: "Step 2: Upload documents", completed: false, link: "#" },
+        //                 { label: "Step 3: Review approvals", completed: true, link: "#" },
+        //             ],
+        //             "Radiology Intake": [
+        //                 { label: "Step 1: Fill intake form", completed: true, link: "#" },
+        //                 { label: "Step 2: Verify patient data", completed: false, link: "#" },
+        //             ],
+        //             "Lab Intake": [
+        //                 { label: "Step 1: Initiate lab test", completed: false, link: "#" },
+        //                 { label: "Step 2: Submit samples", completed: true, link: "#" },
+        //             ],
+        //         },
+        //         user: {
+        //             username: "irvins",
+        //             intakesDashboardLink: "/my-intakes-dashboard", // Dynamic link
+        //         },
+        //     });
+        //     setActiveTab("IDS Intake"); // Default to first tab
+        //     setIsLoading(false);
+        // }, 500); // Simulate async call
     }, []);
 
     if (isLoading || !data) {
@@ -100,6 +122,54 @@ export function IntakeDetail() {
     }
 
     const { projectInfo, tabs, overallSteps, tabLinks, user } = data;
+    console.log('DATA: ', data)
+
+    const renderContent = () => {
+        let act = data.find((tab) => tab.title === activeTab)
+        if(act && act?.complete === "2") { //render completed links for editing
+            return (
+                <>
+                    <Blockquote
+                        color="green"
+                        mt="lg"
+                        radius="md"
+                    >Thank you for completing the survey, click the following link to edit your previous submission
+                    </Blockquote>
+                    <Group justify="space-between" mt="md" mb="xs">
+                        <Text fw={500}>{act.title}</Text>
+                        <Badge color="green">Complete</Badge>
+                    </Group>
+                    <Button
+                        component="a"
+                        href={data.find((tab) => tab.title === activeTab)?.url}
+                        rightSection={<IconExternalLink size={14} />}
+                    >  Complete Survey
+                    </Button>
+                </>
+            )
+        } else { // user has never submitted before
+            return (
+                <>
+                    <Blockquote
+                        color="blue"
+                        mt="lg"
+                        radius="md"
+                    >Please complete the following survey
+                    </Blockquote>
+                    <Group justify="space-between" mt="md" mb="xs">
+                        <Text fw={500}>{act.title}</Text>
+                        <Badge color="yellow">Incomplete</Badge>
+                    </Group>
+                    <Button
+                        component="a"
+                        href={data.find((tab) => tab.title === activeTab)?.url}
+                        rightSection={<IconExternalLink size={14} />}
+                    >  Complete Survey
+                    </Button>
+                </>
+            )
+        }
+    }
 
     return (
         <AppShell header={{ height: 40 }} padding="md">
@@ -144,16 +214,16 @@ export function IntakeDetail() {
                     </Text>
                     <List size="sm" spacing="xs">
                         <List.Item>
-                            <b>Project Name:</b> {projectInfo.name}
+                            <b>Project Name:</b> {projectInfo?.name}
                         </List.Item>
                         <List.Item>
-                            <b>Project Acronym:</b> {projectInfo.acronym}
+                            <b>Project Acronym:</b> {projectInfo?.acronym}
                         </List.Item>
                         <List.Item>
-                            <b>IRB#:</b> {projectInfo.irbNumber}
+                            <b>IRB#:</b> {projectInfo?.irbNumber}
                         </List.Item>
                         <List.Item>
-                            <b>Oncore#:</b> {projectInfo.oncoreNumber}
+                            <b>Oncore#:</b> {projectInfo?.oncoreNumber}
                         </List.Item>
                     </List>
                 </Blockquote>
@@ -190,14 +260,14 @@ export function IntakeDetail() {
                         }}
                     >
                         <Stack spacing="md">
-                            {tabs.map((tab) => (
+                            {data?.map((tab) => (
                                 <Button
-                                    key={tab.name}
-                                    variant={activeTab === tab.name ? "filled" : "light"}
+                                    key={tab.title}
+                                    variant={activeTab === tab.title ? "filled" : "light"}
                                     fullWidth
-                                    onClick={() => setActiveTab(tab.name)}
+                                    onClick={() => setActiveTab(tab.title)}
                                 >
-                                    {tab.name}
+                                    {tab.title}
                                 </Button>
                             ))}
                         </Stack>
@@ -206,54 +276,59 @@ export function IntakeDetail() {
                     {/* Tab Content */}
                     <Grid.Col span={9}>
                         <Card shadow="sm" p="lg" style={{ height: "100%" }}>
-                            <Text align="center" size="xl" weight={700}>
-                                {activeTab}
-                            </Text>
-                            {/*<Text mt="md">{tabs.find((tab) => tab.name === activeTab)?.content}</Text>*/}
-                            <Stepper active={overallStep} onStepClick={setOverallStep}>
-                                {overallSteps.map((step, index) => (
-                                    <Stepper.Step key={index} label={step}>
-                                        Overall progress for {step}
-                                    </Stepper.Step>
-                                ))}
-                            </Stepper>
-                            <List spacing="sm" mt="lg" size="sm" withPadding>
-                                {tabLinks[activeTab]?.map((item, index) => (
-                                    <List.Item
-                                        key={index}
-                                        icon={
-                                            item.completed ? (
-                                                <input
-                                                    type="checkbox"
-                                                    checked
-                                                    readOnly
-                                                    style={{
-                                                        pointerEvents: "none",
-                                                        marginRight: "10px",
-                                                        transform: "scale(1.5)",
-                                                    }}
-                                                />
-                                            ) : (
-                                                <input
-                                                    type="checkbox"
-                                                    style={{
-                                                        pointerEvents: "none",
-                                                        marginRight: "10px",
-                                                        transform: "scale(1.5)",
-                                                    }}
-                                                />
-                                            )
-                                        }
-                                    >
-                                        <a
-                                            href={item.link}
-                                            style={{ textDecoration: "none", color: "inherit" }}
-                                        >
-                                            {item.label}
-                                        </a>
-                                    </List.Item>
-                                ))}
-                            </List>
+                            <Card.Section>
+                                {data && renderContent()}
+                                {/*<Text align="center" size="xl" weight={700}>*/}
+                                {/*    {activeTab}*/}
+                                {/*</Text>*/}
+                                {/*<Text mt="md">{data.find((tab) => tab.title === activeTab)?.url}</Text>*/}
+
+                            </Card.Section>
+
+                            {/*<Stepper active={overallStep} onStepClick={setOverallStep}>*/}
+                            {/*    {overallSteps.map((step, index) => (*/}
+                            {/*        <Stepper.Step key={index} label={step}>*/}
+                            {/*            Overall progress for {step}*/}
+                            {/*        </Stepper.Step>*/}
+                            {/*    ))}*/}
+                            {/*</Stepper>*/}
+                            {/*<List spacing="sm" mt="lg" size="sm" withPadding>*/}
+                            {/*    {tabLinks[activeTab]?.map((item, index) => (*/}
+                            {/*        <List.Item*/}
+                            {/*            key={index}*/}
+                            {/*            icon={*/}
+                            {/*                item.completed ? (*/}
+                            {/*                    <input*/}
+                            {/*                        type="checkbox"*/}
+                            {/*                        checked*/}
+                            {/*                        readOnly*/}
+                            {/*                        style={{*/}
+                            {/*                            pointerEvents: "none",*/}
+                            {/*                            marginRight: "10px",*/}
+                            {/*                            transform: "scale(1.5)",*/}
+                            {/*                        }}*/}
+                            {/*                    />*/}
+                            {/*                ) : (*/}
+                            {/*                    <input*/}
+                            {/*                        type="checkbox"*/}
+                            {/*                        style={{*/}
+                            {/*                            pointerEvents: "none",*/}
+                            {/*                            marginRight: "10px",*/}
+                            {/*                            transform: "scale(1.5)",*/}
+                            {/*                        }}*/}
+                            {/*                    />*/}
+                            {/*                )*/}
+                            {/*            }*/}
+                            {/*        >*/}
+                            {/*            <a*/}
+                            {/*                href={item.link}*/}
+                            {/*                style={{ textDecoration: "none", color: "inherit" }}*/}
+                            {/*            >*/}
+                            {/*                {item.label}*/}
+                            {/*            </a>*/}
+                            {/*        </List.Item>*/}
+                            {/*    ))}*/}
+                            {/*</List>*/}
                         </Card>
                     </Grid.Col>
                 </Grid>
