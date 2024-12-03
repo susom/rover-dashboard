@@ -101,7 +101,7 @@ class IntakeDashboard extends AbstractExternalModule
 
         return match ($action) {
             'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
-            'checkUserDetailAccess' => $this->checkUserDetailAccess($payload),
+            'getUserDetail' => $this->getUserDetail($payload),
             'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
             default => throw new Exception ("Action $action is not defined"),
         };
@@ -345,7 +345,7 @@ class IntakeDashboard extends AbstractExternalModule
      * @param $payload
      * @return string
      */
-    public function checkUserDetailAccess($payload): string
+    public function getUserDetail($payload): string
     {
         try {
             if (empty($payload['username']) || empty($payload['uid'])) {
@@ -374,12 +374,13 @@ class IntakeDashboard extends AbstractExternalModule
             // Iterate over to determine if current user has linked access to detail form
             foreach ($userIntakes as $submission) {
                 if ($submission['intake_id'] === $uid) {
-                    return json_encode([
-                        "success" => true
-                    ]);
+                    return $this->fetchRequiredSurveys($payload);
+//                    return json_encode([
+//                        "success" => true
+//                    ]);
                 }
             }
-
+//            $this->emLog()
             return json_encode([
                 "success" => false
             ]);
@@ -407,17 +408,21 @@ class IntakeDashboard extends AbstractExternalModule
      * @param $universalId
      * @return false|string
      */
-    public function fetchRequiredSurveys($universalId)
+    public function fetchRequiredSurveys($payload)
     {
+
         try {
+            if (empty($payload['uid']))
+                throw new \Exception("No Universal ID passed to fetchRequiredSurveys");
+
             $parentId = $this->getSystemSetting('parent-project');
             $projectSettings = $this->getProjectSettings($parentId);
-            $completedIntake = $this->fetchParentRecordData($parentId, $universalId);
+            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid']);
             $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
 
             return json_encode([
-                "data" => $this->generateSurveyLinks($universalId, $requiredChildPIDs),
+                "data" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
                 "success" => true
             ]);
 
@@ -485,6 +490,7 @@ class IntakeDashboard extends AbstractExternalModule
         $surveyLinks = [];
 
         foreach ($requiredChildPIDs as $childProjectId) {
+            $item = [];
             $project = new \Project($childProjectId);
             $childInstrument = $this->getChildInstrument($project);
             $childEventId = $this->getChildEventId($project, $childInstrument);
@@ -492,13 +498,16 @@ class IntakeDashboard extends AbstractExternalModule
             $check = $this->checkChildDataExists($universalId, $childProjectId);
             if (empty($check)) {
                 $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
-                $surveyLinks[$childProjectId]['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
+                $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
             } else {
-                $surveyLinks[$childProjectId]['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
+                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
             }
 
-            $surveyLinks[$childProjectId]['form_name'] = reset($project->surveys)['form_name'];
-            $surveyLinks[$childProjectId]['title'] = reset($project->surveys)['title'];
+            $item['complete'] = $check[$childInstrument . '_complete'];
+            $item['child_pid'] = $childProjectId;
+            $item['form_name'] = reset($project->surveys)['form_name'];
+            $item['title'] = reset($project->surveys)['title'];
+            $surveyLinks[] = $item;
         }
 
         return $surveyLinks;
