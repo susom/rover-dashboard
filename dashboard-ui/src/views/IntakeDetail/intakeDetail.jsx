@@ -26,7 +26,8 @@ export function IntakeDetail() {
     const [activeStep, setActiveStep] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(""); // Track active tab
-    const [data, setData] = useState(null); // Stubbed dynamic data
+    const [data, setData] = useState([]); // Stubbed dynamic data
+    const [detail, setDetail] = useState("");
 
     const params = useParams()
     const navigate = useNavigate();
@@ -38,9 +39,13 @@ export function IntakeDetail() {
 
     const successCallback = (res) => {
         console.log('success', res)
-        setData(res?.data)
+        setData(res?.surveys)
+        setDetail(res?.detail)
 
-        setActiveTab(res?.data[0]['title']); // Default to first tab
+        if (res?.surveys?.[0]?.title) {
+            setActiveTab(res.surveys[0].title); // Default to first tab
+        }
+
         setIsLoading(false);
     }
 
@@ -52,13 +57,14 @@ export function IntakeDetail() {
     // Stubbed dynamic data
     useEffect(() => {
         console.warn("Using stubbed data for UI testing");
+
         let jsmoModule;
         if (import.meta?.env?.MODE !== 'development')
             jsmoModule = ExternalModules.Stanford.IntakeDashboard;
 
         jsmoModule.getUserDetail({'username': globalUsername, 'uid': params?.id}, successCallback, errorCallback)
 
-        // jsmo.fetchRequiredSurveys
+
         // Simulating async data fetching
         // setTimeout(() => {
         //     setData({
@@ -122,10 +128,9 @@ export function IntakeDetail() {
     }
 
     const { projectInfo, tabs, overallSteps, tabLinks, user } = data;
-    console.log('DATA: ', data)
 
     const renderContent = () => {
-        let act = data.find((tab) => tab.title === activeTab)
+        let act = data.find((tab) => tab?.title === activeTab)
         if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
@@ -136,12 +141,12 @@ export function IntakeDetail() {
                     >Thank you for completing the survey, click the following link to edit your previous submission
                     </Blockquote>
                     <Group justify="space-between" mt="md" mb="xs">
-                        <Text fw={500}>{act.title}</Text>
+                        <Text fw={500}>{act?.title}</Text>
                         <Badge color="green">Complete</Badge>
                     </Group>
                     <Button
                         component="a"
-                        href={data.find((tab) => tab.title === activeTab)?.url}
+                        href={data.find((tab) => tab?.title === activeTab)?.url}
                         rightSection={<IconExternalLink size={14} />}
                     >  Complete Survey
                     </Button>
@@ -162,13 +167,72 @@ export function IntakeDetail() {
                     </Group>
                     <Button
                         component="a"
-                        href={data.find((tab) => tab.title === activeTab)?.url}
+                        href={data.find((tab) => tab?.title === activeTab)?.url}
                         rightSection={<IconExternalLink size={14} />}
                     >  Complete Survey
                     </Button>
                 </>
             )
         }
+    }
+
+    const renderChildSurveys = () => {
+        if(data.length) {
+            return (
+                <Grid style={{ height: "100%" }} gutter="md">
+                    {/* Tabs */}
+                    <Grid.Col
+                        span={3}
+                        style={{
+                            backgroundColor: "#f8f9fa",
+                            padding: "20px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <Stack spacing="md">
+                            {data?.map((tab) => (
+                                <Button
+                                    key={tab?.title}
+                                    variant={activeTab === tab.title ? "filled" : "light"}
+                                    fullWidth
+                                    onClick={() => setActiveTab(tab?.title)}
+                                >
+                                    {tab?.title}
+                                </Button>
+                            ))}
+                        </Stack>
+                    </Grid.Col>
+
+                    {/* Tab Content */}
+                    <Grid.Col span={9}>
+                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+                            <Card.Section>
+                                {data.length && renderContent()}
+                            </Card.Section>
+                        </Card>
+                    </Grid.Col>
+                </Grid>
+            )
+        } else {
+            return (
+                <Grid style={{ height: "100%" }} gutter="md">
+                    <Grid.Col span={12}>
+                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+                            <Card.Section
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Badge color="gray" size="lg">No Services requested!</Badge>
+                            </Card.Section>
+                        </Card>
+                    </Grid.Col>
+                </Grid>
+            )
+        }
+
     }
 
     return (
@@ -209,23 +273,33 @@ export function IntakeDetail() {
                     radius="md"
                     icon={<IconInfoCircle />}
                 >
-                    <Text fw={500} mb="xs">
-                        Project Info
-                    </Text>
-                    <List size="sm" spacing="xs">
-                        <List.Item>
-                            <b>Project Name:</b> {projectInfo?.name}
-                        </List.Item>
-                        <List.Item>
-                            <b>Project Acronym:</b> {projectInfo?.acronym}
-                        </List.Item>
-                        <List.Item>
-                            <b>IRB#:</b> {projectInfo?.irbNumber}
-                        </List.Item>
-                        <List.Item>
-                            <b>Oncore#:</b> {projectInfo?.oncoreNumber}
-                        </List.Item>
-                    </List>
+
+                    <Group spacing="xs" align="center" mt="xs">
+                        <Text size="sm" c="dimmed">Project Name:</Text>
+                        <Text size="sm" fw={700}>{detail?.research_title}</Text>
+                    </Group>
+                    <Group spacing="xs" align="center" mt="xs">
+                        <Text size="sm" c="dimmed">Universal ID #:</Text>
+                        <Text size="sm" fw={700}>{detail?.record_id}</Text>
+                    </Group>
+                    <Group spacing="xs" align="center" mt="xs">
+                        <Text size="sm" c="dimmed">Principal Investigator:</Text>
+                        <Text size="sm" fw={700}>{`${detail?.pi_f_name} ${detail?.pi_l_name}`}</Text>
+                    </Group>
+
+                    {/*<List size="sm" spacing="xs">*/}
+                    {/*    <List.Item>*/}
+
+                    {/*        /!*<b>Project Name:</b> {detail?.research_title}*!/*/}
+                    {/*    </List.Item>*/}
+                    {/*    /!*TODO Must change if record_id is not the default id*!/*/}
+                    {/*    <List.Item>*/}
+                    {/*        <b>Universal ID #:</b> {detail?.record_id}*/}
+                    {/*    </List.Item>*/}
+                    {/*    <List.Item>*/}
+                    {/*        <b>PI:</b> {`${detail?.pi_f_name} ${detail?.pi_l_name}`}*/}
+                    {/*    </List.Item>*/}
+                    {/*</List>*/}
                 </Blockquote>
 
                 <Divider label="Universal Intake submissions" labelPosition="center" my="md" />
@@ -248,90 +322,7 @@ export function IntakeDetail() {
                 </Card>
 
                 <Divider label="Requested services" labelPosition="center" my="md" />
-
-                <Grid style={{ height: "100%" }} gutter="md">
-                    {/* Tabs */}
-                    <Grid.Col
-                        span={3}
-                        style={{
-                            backgroundColor: "#f8f9fa",
-                            padding: "20px",
-                            borderRadius: "8px",
-                        }}
-                    >
-                        <Stack spacing="md">
-                            {data?.map((tab) => (
-                                <Button
-                                    key={tab.title}
-                                    variant={activeTab === tab.title ? "filled" : "light"}
-                                    fullWidth
-                                    onClick={() => setActiveTab(tab.title)}
-                                >
-                                    {tab.title}
-                                </Button>
-                            ))}
-                        </Stack>
-                    </Grid.Col>
-
-                    {/* Tab Content */}
-                    <Grid.Col span={9}>
-                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
-                            <Card.Section>
-                                {data && renderContent()}
-                                {/*<Text align="center" size="xl" weight={700}>*/}
-                                {/*    {activeTab}*/}
-                                {/*</Text>*/}
-                                {/*<Text mt="md">{data.find((tab) => tab.title === activeTab)?.url}</Text>*/}
-
-                            </Card.Section>
-
-                            {/*<Stepper active={overallStep} onStepClick={setOverallStep}>*/}
-                            {/*    {overallSteps.map((step, index) => (*/}
-                            {/*        <Stepper.Step key={index} label={step}>*/}
-                            {/*            Overall progress for {step}*/}
-                            {/*        </Stepper.Step>*/}
-                            {/*    ))}*/}
-                            {/*</Stepper>*/}
-                            {/*<List spacing="sm" mt="lg" size="sm" withPadding>*/}
-                            {/*    {tabLinks[activeTab]?.map((item, index) => (*/}
-                            {/*        <List.Item*/}
-                            {/*            key={index}*/}
-                            {/*            icon={*/}
-                            {/*                item.completed ? (*/}
-                            {/*                    <input*/}
-                            {/*                        type="checkbox"*/}
-                            {/*                        checked*/}
-                            {/*                        readOnly*/}
-                            {/*                        style={{*/}
-                            {/*                            pointerEvents: "none",*/}
-                            {/*                            marginRight: "10px",*/}
-                            {/*                            transform: "scale(1.5)",*/}
-                            {/*                        }}*/}
-                            {/*                    />*/}
-                            {/*                ) : (*/}
-                            {/*                    <input*/}
-                            {/*                        type="checkbox"*/}
-                            {/*                        style={{*/}
-                            {/*                            pointerEvents: "none",*/}
-                            {/*                            marginRight: "10px",*/}
-                            {/*                            transform: "scale(1.5)",*/}
-                            {/*                        }}*/}
-                            {/*                    />*/}
-                            {/*                )*/}
-                            {/*            }*/}
-                            {/*        >*/}
-                            {/*            <a*/}
-                            {/*                href={item.link}*/}
-                            {/*                style={{ textDecoration: "none", color: "inherit" }}*/}
-                            {/*            >*/}
-                            {/*                {item.label}*/}
-                            {/*            </a>*/}
-                            {/*        </List.Item>*/}
-                            {/*    ))}*/}
-                            {/*</List>*/}
-                        </Card>
-                    </Grid.Col>
-                </Grid>
+                {renderChildSurveys()}
             </AppShell.Main>
         </AppShell>
     );
