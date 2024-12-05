@@ -7,6 +7,7 @@ import {
     Text,
     Stepper,
     Button,
+    Box,
     Badge,
     Timeline,
     Stack,
@@ -134,43 +135,55 @@ export function IntakeDetail() {
         if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
+                    <Badge m="sm" color="green">Complete</Badge>
                     <Blockquote
                         color="green"
-                        mt="lg"
+                        mb="md"
                         radius="md"
                     >Thank you for completing the survey, click the following link to edit your previous submission
                     </Blockquote>
-                    <Group justify="space-between" mt="md" mb="xs">
-                        <Text fw={500}>{act?.title}</Text>
-                        <Badge color="green">Complete</Badge>
-                    </Group>
-                    <Button
-                        component="a"
-                        href={data.find((tab) => tab?.title === activeTab)?.url}
-                        rightSection={<IconExternalLink size={14} />}
-                    >  Complete Survey
-                    </Button>
+                    {/*<Group spacing="xs" align="center" mt="xs">*/}
+                    {/*    <Badge color="green">Complete</Badge>*/}
+                    {/*    <Text fw={500}>{act?.title}</Text>*/}
+                    {/*</Group>*/}
+                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <Button
+                            size="md"
+                            color="green"
+                            component="a"
+                            href={data.find((tab) => tab?.title === activeTab)?.url}
+                            rightSection={<IconExternalLink size={20} />}
+                        >
+                            Edit Survey
+                        </Button>
+                    </Box>
                 </>
             )
         } else { // user has never submitted before
             return (
                 <>
+                    <Badge m="sm" color="blue">Incomplete</Badge>
                     <Blockquote
                         color="blue"
-                        mt="lg"
+                        mb="md"
                         radius="md"
                     >Please complete the following survey
                     </Blockquote>
-                    <Group justify="space-between" mt="md" mb="xs">
-                        <Text fw={500}>{act.title}</Text>
-                        <Badge color="yellow">Incomplete</Badge>
-                    </Group>
-                    <Button
-                        component="a"
-                        href={data.find((tab) => tab?.title === activeTab)?.url}
-                        rightSection={<IconExternalLink size={14} />}
-                    >  Complete Survey
-                    </Button>
+                    {/*<Group spacing="xs" align="center" mt="xs">*/}
+                    {/*    <Text fw={500}>{act.title}</Text>*/}
+                    {/*    <Badge color="yellow">Incomplete</Badge>*/}
+                    {/*</Group>*/}
+                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <Button
+                            size="md"
+                            color="blue"
+                            component="a"
+                            href={data.find((tab) => tab?.title === activeTab)?.url}
+                            rightSection={<IconExternalLink size={20} />}
+                        >
+                            Complete Survey
+                        </Button>
+                    </Box>
                 </>
             )
         }
