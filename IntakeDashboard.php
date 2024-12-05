@@ -375,9 +375,6 @@ class IntakeDashboard extends AbstractExternalModule
             foreach ($userIntakes as $submission) {
                 if ($submission['intake_id'] === $uid) {
                     return $this->fetchRequiredSurveys($payload);
-//                    return json_encode([
-//                        "success" => true
-//                    ]);
                 }
             }
 //            $this->emLog()
@@ -422,7 +419,8 @@ class IntakeDashboard extends AbstractExternalModule
 
 
             return json_encode([
-                "data" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
+                "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
+                "detail" => reset($completedIntake),
                 "success" => true
             ]);
 
