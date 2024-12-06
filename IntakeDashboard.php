@@ -44,7 +44,6 @@ class IntakeDashboard extends AbstractExternalModule
      */
     public function generateAssetFiles(): array
     {
-        $this->fetchRequiredSurveys(1);
         $cwd = $this->getModulePath();
         $assets = [];
 
@@ -102,7 +101,8 @@ class IntakeDashboard extends AbstractExternalModule
 
         return match ($action) {
             'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
-            'checkUserDetailAccess' => $this->checkUserDetailAccess($payload),
+            'getUserDetail' => $this->getUserDetail($payload),
+            'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
             default => throw new Exception ("Action $action is not defined"),
         };
     }
@@ -345,7 +345,7 @@ class IntakeDashboard extends AbstractExternalModule
      * @param $payload
      * @return string
      */
-    public function checkUserDetailAccess($payload): string
+    public function getUserDetail($payload): string
     {
         try {
             if (empty($payload['username']) || empty($payload['uid'])) {
@@ -374,12 +374,10 @@ class IntakeDashboard extends AbstractExternalModule
             // Iterate over to determine if current user has linked access to detail form
             foreach ($userIntakes as $submission) {
                 if ($submission['intake_id'] === $uid) {
-                    return json_encode([
-                        "success" => true
-                    ]);
+                    return $this->fetchRequiredSurveys($payload);
                 }
             }
-
+//            $this->emLog()
             return json_encode([
                 "success" => false
             ]);
@@ -389,70 +387,211 @@ class IntakeDashboard extends AbstractExternalModule
         }
     }
 
+    public function checkChildDataExists($universalId, $pid){
+        $params = [
+            "return_format" => "json",
+            "project_id" => $pid,
+            "records" => $universalId
+        ];
 
-    public function fetchRequiredSurveys($id)
+        $response = json_decode(REDCap::getData($params), true);
+        if(count($response))
+            return reset($response);
+        return [];
+
+    }
+
+    /**
+     * @param $project
+     * @param $fields
+     * @return void
+     * Removes hidden fields before sending the contents of getData to client
+     */
+    public function filterHiddenFields($project, &$fields) {
+        foreach($fields as $k => $v) {
+            if($project->metadata[$k] && str_contains($project->metadata[$k]['misc'],'HIDDEN')) {
+                unset($fields[$k]);
+            }
+        }
+    }
+    /**
+     * @param $universalId
+     * @return false|string
+     */
+    public function fetchRequiredSurveys($payload)
     {
+
         try {
-//            $settings = $this->getSystemSettings();
-            $child_ids = $this->getSystemSetting('project-id');
-            $parent_id = $this->getSystemSetting('parent-project');
-            $projectSettings = $this->getProjectSettings($parent_id);
-            if (empty($parent_id) || empty($child_ids))
-                throw new \Exception("Parent project or child projects have not been configured properly, exiting");
-            $universal_survey_form_name = $this->getProjectSetting('universal-survey-form-immutable', $parent_id);
+            if (empty($payload['uid']))
+                throw new \Exception("No Universal ID passed to fetchRequiredSurveys");
 
-            $detailsParams = [
-                "return_format" => "json",
-                "project_id" => $parent_id,
-                "records" => $id
-            ];
+            $parentId = $this->getSystemSetting('parent-project');
+            $projectSettings = $this->getProjectSettings($parentId);
+            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event']);
+            $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
-            $completedIntake = json_decode(REDCap::getData($detailsParams), true);
-            $requiredChildPIDs = [];
+            $project = new \Project($parentId); //TODO Change if record_id is changed
+            $this->filterHiddenFields($project, $completedIntake[0]);
 
-            foreach (reset($completedIntake) as $key => $value) {
-                // Check if the key matches the pattern "serv_map_" where x is an integer
-                if (preg_match('/^serv_map_\d+$/', $key) && $value === "1") {
-                    $key = array_search($key, $projectSettings['mapping-field']);
-
-                    if($key !== false) { //can return 0 index
-                        $requiredChildPIDs[] = $projectSettings['project-id'][$key];
-                    }
-                }
+            $childSurveys = $project->surveys;
+            $mutableUrl = [];
+            foreach($childSurveys as $id => $survey) {
+                $childEventId = $this->getChildEventId($project, $survey['form_name']);
+                if($survey['form_name'] === $projectSettings['universal-survey-form-mutable'])
+                    $mutableUrl = REDCap::getSurveyLink(reset($completedIntake)['record_id'], $survey['form_name'], $childEventId, 1, $parentId);
             }
 
-            // Iterate through each child project and generate a record for a survey
-            foreach($requiredChildPIDs as $value) {
-                $a = new \Project($value);
-                $surveyInfo = $a->surveys;
-                $saveData = [
-                    [
-                        "record_id" => 1,
-                        "abc" => ""
-                    ]
-                ];
+            return json_encode([
+                "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
+                "detail" => reset($completedIntake),
+                "mutable_url" => $mutableUrl,
+                "success" => true
+            ]);
 
-                // Save data using REDCap's saveData function
-                $a = REDCap::saveData($value, 'json', json_encode($saveData), 'overwrite');
-                $test = Survey::getSurveyLinkFromParticipantId(1);
-                $abd = 1;
-            }
-
-            $a = new \Project($parent_id);
-            $surveyInfo = $a->surveys;
-
-            $child_ids = reset($child_ids);
-            foreach ($child_ids as $key => $value) {
-                $a = new \Project($value);
-                $surveyInfo = $a->surveys;
-                // $b = saveData()
-//            $url = REDCap::getSurveyLink($b, strtolower($instrument), $event_id, $ts_survey_instance);
-
-            }
-            return $child_ids;
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
         }
+    }
 
+    /**
+     * @param $parentId
+     * @param $universalId
+     * @return mixed
+     */
+    private function fetchParentRecordData($parentId, $universalId, $event)
+    {
+        $formFields =  json_decode(REDCap::getDataDictionary($parentId, 'json', true, null, 'intake'), true);
+        $fields = [];
+
+        foreach($formFields as $field)
+            $fields[] = $field['field_name'];
+
+        $detailsParams = [
+            "return_format" => "json",
+            "project_id" => $parentId,
+            "records" => $universalId,
+            "fields" => $fields,
+            "events" => $event
+        ];
+        return json_decode(REDCap::getData($detailsParams), true);
+//        $data = reset($data);
+//        foreach($data as $field => $val) {
+//            foreach($formFields as $full){
+//                if($field === $full['field_name']){
+//                    $data[$full['field_name']] = $val;
+//                    unset($data[$field]);
+//                }
+//            }
+//
+//        }
+//        return $data;
+//        return json_decode(REDCap::getData($detailsParams2), true);
+    }
+
+    /**
+     * @param $completedIntake
+     * @param $projectSettings
+     * @return array
+     */
+    private function getRequiredChildPIDs($completedIntake, $projectSettings)
+    {
+        $requiredChildPIDs = [];
+        $firstRecord = reset($completedIntake);
+
+        foreach ($firstRecord as $key => $value) {
+            if ($this->isValidServiceKey($key, $value)) {
+                $mappingKey = array_search($key, $projectSettings['mapping-field']);
+                if ($mappingKey !== false) {
+                    $requiredChildPIDs[] = $projectSettings['project-id'][$mappingKey];
+                }
+            }
+        }
+
+        return $requiredChildPIDs;
+    }
+
+    /**
+     * @param $key
+     * @param $value
+     * @return bool
+     */
+    private function isValidServiceKey($key, $value)
+    {
+        return preg_match('/^serv_map_\d+$/', $key) && $value === "1";
+    }
+
+    /**
+     * @param $universalId
+     * @param $requiredChildPIDs
+     * @return array
+     * @throws Exception
+     */
+    private function generateSurveyLinks($universalId, $requiredChildPIDs)
+    {
+        $surveyLinks = [];
+
+        foreach ($requiredChildPIDs as $childProjectId) {
+            $item = [];
+            $project = new \Project($childProjectId);
+            $childInstrument = $this->getChildInstrument($project);
+            $childEventId = $this->getChildEventId($project, $childInstrument);
+
+            $check = $this->checkChildDataExists($universalId, $childProjectId);
+            if (empty($check)) {
+                $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
+                $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
+            } else {
+                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
+            }
+
+            $item['complete'] = $check[$childInstrument . '_complete'];
+            $item['child_pid'] = $childProjectId;
+            $item['form_name'] = reset($project->surveys)['form_name'];
+            $item['title'] = reset($project->surveys)['title'];
+            $surveyLinks[] = $item;
+        }
+
+        return $surveyLinks;
+    }
+
+    /**
+     * @param $project
+     * @return mixed|string
+     */
+    private function getChildInstrument($project)
+    {
+        $surveyInfo = $project->surveys;
+        return reset($surveyInfo)['form_name']; // Assumes a single survey per child project
+    }
+
+    /**
+     * @param $project
+     * @param $childInstrument
+     * @return int|string|null
+     */
+    private function getChildEventId($project, $childInstrument)
+    {
+        foreach ($project->eventsForms as $eventId => $forms) {
+            if (in_array($childInstrument, $forms, true)) {
+                return $eventId;
+            }
+        }
+
+        return null;
+    }
+
+    private function preCreateChildRecord($childProjectId, $universalId)
+    {
+        $saveData = [
+            ["record_id" => $universalId],
+        ];
+
+        $response = REDCap::saveData($childProjectId, 'json', json_encode($saveData), 'overwrite');
+        if (!empty($response['errors'])) {
+            $errorDetails = json_encode($response['errors']);
+            throw new \Exception("Error in pre-creation save data call: $errorDetails");
+        }
+
+        return array_key_first($response['ids']);
     }
 }
