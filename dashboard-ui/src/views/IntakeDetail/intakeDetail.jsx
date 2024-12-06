@@ -5,7 +5,9 @@ import {
     Grid,
     Group,
     Text,
+    Table,
     Stepper,
+    Modal,
     Button,
     Box,
     Badge,
@@ -16,6 +18,7 @@ import {
     List,
     Divider,
 } from "@mantine/core";
+import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { IconPhoto, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
@@ -29,9 +32,10 @@ export function IntakeDetail() {
     const [activeTab, setActiveTab] = useState(""); // Track active tab
     const [data, setData] = useState([]); // Stubbed dynamic data
     const [detail, setDetail] = useState("");
-
+    const [mutableUrl, setmutableUrl] = useState("")
     const params = useParams()
     const navigate = useNavigate();
+    const [modalOpen, { open, close }] = useDisclosure(false);
 
     const nextStep = () =>
         setActiveStep((current) => (current < overallSteps.length - 1 ? current + 1 : current));
@@ -42,7 +46,7 @@ export function IntakeDetail() {
         console.log('success', res)
         setData(res?.surveys)
         setDetail(res?.detail)
-
+        setmutableUrl(res?.mutable_url)
         if (res?.surveys?.[0]?.title) {
             setActiveTab(res.surveys[0].title); // Default to first tab
         }
@@ -126,6 +130,41 @@ export function IntakeDetail() {
                 <Text>Loading...</Text>
             </div>
         );
+    }
+
+    const renderTable = () => {
+        const tab = {
+            caption: 'Survey Details',
+            head: ['Field', 'Value'],
+            body: detail
+                ? Object.entries(detail).map(([key, value]) => [key, value || "No value"])
+                : [],
+        }
+
+        return (
+            <Table.ScrollContainer h={400}>
+                <Table
+                    stickyHeader
+                    striped
+                    data={tab}
+                />
+            </Table.ScrollContainer>
+        );
+    }
+
+    const viewParentIntake = () => {
+
+        // // Open a new window or tab
+        // const newWindow = window.open('', '_blank');
+        //
+        // if (newWindow) {
+        //     // Write the HTML content to the new window
+        //     newWindow.document.open();
+        //     newWindow.document.write(detail?.summary);
+        //     newWindow.document.close();
+        // } else {
+        //     console.error('Unable to open a new window. Please check your browser settings.');
+        // }
     }
 
     const { projectInfo, tabs, overallSteps, tabLinks, user } = data;
@@ -314,16 +353,23 @@ export function IntakeDetail() {
                     {/*    </List.Item>*/}
                     {/*</List>*/}
                 </Blockquote>
-
                 <Divider label="Universal Intake submissions" labelPosition="center" my="md" />
-
+                <Modal size="xl" opened={modalOpen} onClose={close} title="Universal Intake Submission I">
+                    {modalOpen && renderTable()}
+                </Modal>
                 <Card shadow="sm" p="lg" my="lg">
                     <Timeline active={1} lineWidth={3} bulletSize={18}>
                         <Timeline.Item title="Universal Intake submission I">
-                            <Text c="dimmed" size="sm">View prior survey submission <Text variant="link" component="span" inherit>here</Text></Text>
+                            <Group spacing="xs" align="center">
+                                <Text c="dimmed" size="sm">View prior survey submission:</Text>
+                                <Button onClick={open} variant="light" size="xs">View</Button>
+                            </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Universal Intake submission II">
-                            <Text c="dimmed" size="sm">View or Edit prior survey submission<Text variant="link" component="span" inherit>here</Text></Text>
+                            <Group spacing="xs" align="center">
+                                <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
+                                <Button component="a" href={mutableUrl} variant="light" size="xs">View</Button>
+                            </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
                             <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>
