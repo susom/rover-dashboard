@@ -402,6 +402,19 @@ class IntakeDashboard extends AbstractExternalModule
     }
 
     /**
+     * @param $project
+     * @param $fields
+     * @return void
+     * Removes hidden fields before sending the contents of getData to client
+     */
+    public function filterHiddenFields($project, &$fields) {
+        foreach($fields as $k => $v) {
+            if($project->metadata[$k] && str_contains($project->metadata[$k]['misc'],'HIDDEN')) {
+                unset($fields[$k]);
+            }
+        }
+    }
+    /**
      * @param $universalId
      * @return false|string
      */
@@ -414,13 +427,24 @@ class IntakeDashboard extends AbstractExternalModule
 
             $parentId = $this->getSystemSetting('parent-project');
             $projectSettings = $this->getProjectSettings($parentId);
-            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid']);
+            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event']);
             $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
+            $project = new \Project($parentId); //TODO Change if record_id is changed
+            $this->filterHiddenFields($project, $completedIntake[0]);
+
+            $childSurveys = $project->surveys;
+            $mutableUrl = [];
+            foreach($childSurveys as $id => $survey) {
+                $childEventId = $this->getChildEventId($project, $survey['form_name']);
+                if($survey['form_name'] === $projectSettings['universal-survey-form-mutable'])
+                    $mutableUrl = REDCap::getSurveyLink(reset($completedIntake)['record_id'], $survey['form_name'], $childEventId, 1, $parentId);
+            }
 
             return json_encode([
                 "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
                 "detail" => reset($completedIntake),
+                "mutable_url" => $mutableUrl,
                 "success" => true
             ]);
 
@@ -434,15 +458,34 @@ class IntakeDashboard extends AbstractExternalModule
      * @param $universalId
      * @return mixed
      */
-    private function fetchParentRecordData($parentId, $universalId)
+    private function fetchParentRecordData($parentId, $universalId, $event)
     {
+        $formFields =  json_decode(REDCap::getDataDictionary($parentId, 'json', true, null, 'intake'), true);
+        $fields = [];
+
+        foreach($formFields as $field)
+            $fields[] = $field['field_name'];
+
         $detailsParams = [
             "return_format" => "json",
             "project_id" => $parentId,
             "records" => $universalId,
+            "fields" => $fields,
+            "events" => $event
         ];
-
         return json_decode(REDCap::getData($detailsParams), true);
+//        $data = reset($data);
+//        foreach($data as $field => $val) {
+//            foreach($formFields as $full){
+//                if($field === $full['field_name']){
+//                    $data[$full['field_name']] = $val;
+//                    unset($data[$field]);
+//                }
+//            }
+//
+//        }
+//        return $data;
+//        return json_decode(REDCap::getData($detailsParams2), true);
     }
 
     /**
