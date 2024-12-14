@@ -1,18 +1,21 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconInfoCircle } from '@tabler/icons-react';
+import {IconExternalLink, IconInfoCircle} from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
+import { IconPlus } from '@tabler/icons-react';
+
 import './dashboard.css';
 
 export function Dashboard() {
     const [intakes, setIntakes] = useState([])
     const [error, setError] = useState('')
     const [loading, { toggle, close }] = useDisclosure(true);
+    const [newRequestLink, setNewRequestLink] = useState('')
 
     const navigate = useNavigate()
-    console.log(loading)
+
     useEffect(() => {
         fetchIntakes()
     }, [])
@@ -53,10 +56,12 @@ export function Dashboard() {
         console.log('success', res)
         toggle()
         setIntakes(res?.data)
+        setNewRequestLink(res?.link)
     }
 
     const errorCallback = (err) => {
         console.error('error', err)
+        toggle()
         setError(err?.error)
     }
 
@@ -108,6 +113,13 @@ export function Dashboard() {
                     </List>
                 </Blockquote>
                 <Divider my="md" />
+                <Button
+                    rightSection={<IconPlus size={20} />}
+                    mb="md"
+                    component="a"
+                    href={newRequestLink}
+                >New Request</Button>
+                {error && <Blockquote mb="md" color="red"><strong>Error: </strong>{error}</Blockquote>}
                 <Card withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
