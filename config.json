@@ -42,33 +42,59 @@
     ],
     "project-settings": [
         {
+            "key": "is_child_project",
+            "name": "<strong>Is Child Project</strong><br><i>Whether or not the current project this EM is enabled on is a child project </i>",
+            "required": true,
+            "type": "checkbox"
+        },
+        {
             "key": "universal-survey-form-immutable",
             "name": "<strong>Universal Intake Survey (Immutable)</strong><br><i>The required survey all intake submissions begin with </i>",
             "required": true,
-            "type": "form-list"
+            "type": "form-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
         },
         {
             "key": "universal-survey-form-mutable",
             "name": "<strong>Universal Intake Survey (Mutable)</strong><br><i>Required survey all intake submissions have that can be altered </i>",
             "required": true,
-            "type": "form-list"
+            "type": "form-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
         },
         {
             "key": "universal-survey-event",
             "name": "<strong>Universal Survey Event</strong><br><i>The event / arm the universal survey records are saved within ",
             "required": true,
-            "type": "event-list"
+            "type": "event-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
         },
         {
             "key": "user-info-event",
             "name": "<strong>User Information Event</strong><br><i>The event / arm the user joining records are saved within ",
             "required": true,
-            "type": "event-list"
+            "type": "event-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
         },
         {
             "key": "child-project-list-description",
             "type": "descriptive",
-            "name": "<h5><strong>Child Projects</strong></h5><i>Each child project below will be incorporated as possible projects to triage users to depending on universal intake answers</i>"
+            "name": "<h5><strong>Child Projects</strong></h5><i>Each child project below will be incorporated as possible projects to triage users to depending on universal intake answers</i>",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
         },
         {
             "key": "child-project-list",
@@ -76,6 +102,10 @@
             "required": true,
             "type": "sub_settings",
             "repeatable":true,
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            },
             "sub_settings":[
                 {
                     "key": "project-id",
