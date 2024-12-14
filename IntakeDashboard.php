@@ -4,7 +4,8 @@ namespace Stanford\IntakeDashboard;
 require_once "emLoggerTrait.php";
 require_once "Utilities/RepeatingForms.php";
 require_once "Utilities/Sanitizer.php";
-
+//require_once "classes/ModuleCore/ModuleCore.php";
+require_once("classes/Child.php");
 
 use ExternalModules\AbstractExternalModule;
 use ExternalModules;
@@ -19,11 +20,23 @@ class IntakeDashboard extends AbstractExternalModule
     use emLoggerTrait;
 
     const BUILD_FILE_DIR = 'dashboard-ui/dist/assets';
+//    private $moduleCore;
 
     public function __construct()
     {
         parent::__construct();
+
     }
+
+//    public function setModuleCore(){
+//        $moduleCore = new ModuleCore($this);
+//    }
+//
+//    public function getModuleCore(){
+//        if(!$this->moduleCore)
+//            $this->setModuleCore(new ModuleCore($this));
+//        return $this->moduleCore;
+//    }
 
     /**
      * Helper method for inserting the JSMO JS into a page along with any preload data
@@ -131,45 +144,62 @@ class IntakeDashboard extends AbstractExternalModule
         $repeat_instance = 1
     )
     {
-        $parent_id = $this->getSystemSetting('parent-project');
-        $pSettings = $this->getProjectSettings($parent_id);
+        try {
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
 
-        $detailsParams = [
-            "return_format" => "json",
-            "project_id" => $project_id,
-            "records" => $record
-        ];
+            $detailsParams = [
+                "return_format" => "json",
+                "project_id" => $project_id,
+                "records" => $record
+            ];
 
-        $completedIntake = json_decode(REDCap::getData($detailsParams), true);
-        if(!empty($completedIntake)){
-            if($instrument === $pSettings['universal-survey-form-immutable']) {
-                $fields = reset($completedIntake);
+            $completedIntake = json_decode(REDCap::getData($detailsParams), true);
+            if(!empty($completedIntake)){
 
-                $requesterSunetSid = $fields['requester_sunet_sid'];
-                $piSunetSid = $fields['pi_sunet_sid'];
-                $primaryContactSunetSid = $fields['sunet_sid'];
-
-                // Determine username
-                $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
-                $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
-                $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
-
-                $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
-
-                foreach ($usernames as $username) {
-                    if (!empty($username)) {
-                        $this->saveUser($username, $fields);
-                    }
+                // Child survey has been saved, we have to copy data from the parent project
+                if($parent_id !== $project_id){
+                    $settings = $pSettings;
+                    $settings['parentId'] = $parent_id;
+                    $child = new Child($this, $project_id, $settings);
+                    $child->saveParentData($record);
                 }
 
-            } else if($instrument === $pSettings['universal-survey-form-mutable']) {
-                //TODO implement mutable survey
+                if($instrument === $pSettings['universal-survey-form-immutable']) {
+                    $fields = reset($completedIntake);
+
+                    $requesterSunetSid = $fields['requester_sunet_sid'];
+                    $piSunetSid = $fields['pi_sunet_sid'];
+                    $primaryContactSunetSid = $fields['sunet_sid'];
+
+                    // Determine username
+                    $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
+                    $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
+                    $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
+
+                    $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
+
+                    foreach ($usernames as $username) {
+                        if (!empty($username)) {
+                            $this->saveUser($username, $fields);
+                        } else {
+                            $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
+                        }
+                    }
+
+                } else if($instrument === $pSettings['universal-survey-form-mutable']) {
+                    //TODO implement mutable survey
+                }
             }
+        } catch (\Exception $e) {
+            $this->handleGlobalError($e);
         }
+
     }
 
     public function determineREDCapUsername($su_sid_field, $email_field) {
         if (!isset($email_field)) {
+            $this->emError("Email field has not been submitted for $su_sid_field, no dashboard access will be given");
             return null; // Return null if email field is not set
         }
 
@@ -284,8 +314,9 @@ class IntakeDashboard extends AbstractExternalModule
     {
         try {
             $username = $_SESSION['username'] ?? null;
+
             if (!$username) {
-                throw new \Exception('No username for current session');
+                throw new \Exception('No username for current session found, please refresh');
             }
 
             $parent_id = $this->getSystemSetting('parent-project');
@@ -334,7 +365,17 @@ class IntakeDashboard extends AbstractExternalModule
                 }
             }
 
-            return json_encode(["data" => $userIntakes, "success" => true]);
+            // Generate survey link for main page
+            $link = $this->getPublicSurveyUrl($parent_id);
+
+//            $reserved = REDCap::reserveNewRecordId($parent_id);
+//            $link = REDCap::getSurveyLink($reserved, $pSettings['universal-survey-form-immutable'], $pSettings['universal-survey-event'], 1, $parent_id);
+
+            return json_encode([
+                "data" => $userIntakes,
+                "success" => true,
+                "link" => $link
+            ]);
 
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
@@ -404,15 +445,24 @@ class IntakeDashboard extends AbstractExternalModule
     /**
      * @param $project
      * @param $fields
-     * @return void
+     * @return array
      * Removes hidden fields before sending the contents of getData to client
      */
     public function filterHiddenFields($project, &$fields) {
+        $new = [];
+        $excluded = ["requester_lookup", "pi_lookup", "one_lookup"];
+
         foreach($fields as $k => $v) {
-            if($project->metadata[$k] && str_contains($project->metadata[$k]['misc'],'HIDDEN')) {
+            if($project->metadata[$k] && (str_contains($project->metadata[$k]['misc'],'HIDDEN') || in_array($project->metadata[$k], $excluded))) { // Hidden fields should not be shown to client
                 unset($fields[$k]);
+            } else {
+                $label = trim($project->metadata[$k]['element_label']);
+                if(!empty($label)){
+                    $new[$label] = $v;
+                }
             }
         }
+        return $new;
     }
     /**
      * @param $universalId
@@ -427,11 +477,12 @@ class IntakeDashboard extends AbstractExternalModule
 
             $parentId = $this->getSystemSetting('parent-project');
             $projectSettings = $this->getProjectSettings($parentId);
+
             $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event']);
             $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
             $project = new \Project($parentId); //TODO Change if record_id is changed
-            $this->filterHiddenFields($project, $completedIntake[0]);
+            $pretty = $this->filterHiddenFields($project, $completedIntake[0]);
 
             $childSurveys = $project->surveys;
             $mutableUrl = [];
@@ -441,9 +492,15 @@ class IntakeDashboard extends AbstractExternalModule
                     $mutableUrl = REDCap::getSurveyLink(reset($completedIntake)['record_id'], $survey['form_name'], $childEventId, 1, $parentId);
             }
 
+            //Grab survey completion timestamp
+            $survey_id = $project->forms[$projectSettings['universal-survey-form-immutable']]['survey_id'];
+            $completedIntake = reset($completedIntake);
+            $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
+
             return json_encode([
                 "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
-                "detail" => reset($completedIntake),
+                "completed_form_detail" => $completedIntake,
+                "completed_form_pretty" => $pretty,
                 "mutable_url" => $mutableUrl,
                 "success" => true
             ]);
@@ -498,14 +555,17 @@ class IntakeDashboard extends AbstractExternalModule
         $requiredChildPIDs = [];
         $firstRecord = reset($completedIntake);
 
-        foreach ($firstRecord as $key => $value) {
-            if ($this->isValidServiceKey($key, $value)) {
-                $mappingKey = array_search($key, $projectSettings['mapping-field']);
-                if ($mappingKey !== false) {
-                    $requiredChildPIDs[] = $projectSettings['project-id'][$mappingKey];
-                }
-            }
-        }
+        foreach($projectSettings['project-id'] as $pid)
+            $requiredChildPIDs[] = $pid;
+
+//        foreach ($firstRecord as $key => $value) {
+//            if ($this->isValidServiceKey($key, $value)) {
+//                $mappingKey = array_search($key, $projectSettings['mapping-field']);
+//                if ($mappingKey !== false) {
+//                    $requiredChildPIDs[] = $projectSettings['project-id'][$mappingKey];
+//                }
+//            }
+//        }
 
         return $requiredChildPIDs;
     }
