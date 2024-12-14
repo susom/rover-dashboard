@@ -21,7 +21,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { IconPhoto, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
+import { IconBook, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
 
 import {useNavigate, useParams} from "react-router-dom";
 
@@ -36,6 +36,7 @@ export function IntakeDetail() {
     const params = useParams()
     const navigate = useNavigate();
     const [modalOpen, { open, close }] = useDisclosure(false);
+    const [pretty, setPretty] = useState("")
 
     const nextStep = () =>
         setActiveStep((current) => (current < overallSteps.length - 1 ? current + 1 : current));
@@ -45,8 +46,10 @@ export function IntakeDetail() {
     const successCallback = (res) => {
         console.log('success', res)
         setData(res?.surveys)
-        setDetail(res?.detail)
+        setDetail(res?.completed_form_detail)
+        setPretty(res?.completed_form_pretty)
         setmutableUrl(res?.mutable_url)
+
         if (res?.surveys?.[0]?.title) {
             setActiveTab(res.surveys[0].title); // Default to first tab
         }
@@ -136,13 +139,13 @@ export function IntakeDetail() {
         const tab = {
             caption: 'Survey Details',
             head: ['Field', 'Value'],
-            body: detail
-                ? Object.entries(detail).map(([key, value]) => [key, value || "No value"])
+            body: pretty
+                ? Object.entries(pretty).map(([key, value]) => [key, value || "No value"])
                 : [],
         }
 
         return (
-            <Table.ScrollContainer h={400}>
+            <Table.ScrollContainer h={600}>
                 <Table
                     stickyHeader
                     striped
@@ -360,15 +363,16 @@ export function IntakeDetail() {
                 <Card shadow="sm" p="lg" my="lg">
                     <Timeline active={1} lineWidth={3} bulletSize={18}>
                         <Timeline.Item title="Universal Intake submission I">
+                            <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>
                             <Group spacing="xs" align="center">
                                 <Text c="dimmed" size="sm">View prior survey submission:</Text>
-                                <Button onClick={open} variant="light" size="xs">View</Button>
+                                <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Universal Intake submission II">
                             <Group spacing="xs" align="center">
                                 <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                                <Button component="a" href={mutableUrl} variant="light" size="xs">View</Button>
+                                <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
@@ -380,7 +384,7 @@ export function IntakeDetail() {
                     {/*<Button>Look</Button>*/}
                 </Card>
 
-                <Divider label="Requested services" labelPosition="center" my="md" />
+                <Divider label="Services" labelPosition="center" my="md" />
                 {renderChildSurveys()}
             </AppShell.Main>
         </AppShell>
