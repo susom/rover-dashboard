@@ -88,10 +88,15 @@ export function Dashboard() {
         body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
+    // const finishedTable = {
+    //     caption: 'List of completed intakes',
+    //     head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
+    //     body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+    // }
     const finishedTable = {
         caption: 'List of completed intakes',
         head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        body: []
     }
 
     return (
