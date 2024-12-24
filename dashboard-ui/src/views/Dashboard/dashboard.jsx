@@ -1,10 +1,10 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
+import {AppShell, Button, ActionIcon, Card, Menu, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {IconExternalLink, IconInfoCircle} from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconDotsVertical, IconArrowRight, IconToggleRightFilled} from '@tabler/icons-react';
 
 import './dashboard.css';
 
@@ -75,17 +75,40 @@ export function Dashboard() {
                 id={id}
                 onClick={() => transition(id)} // Only created once per id
                 variant="light"
+                size="xs"
+                rightSection={<IconArrowRight />}
             >
-                Navigate
+                Detail
             </Button>
         ),
         [] // Dependencies are empty so this function will only be created once
     );
 
+    const renderMenu = () => {
+        return (
+            <Menu position="right-start" shadow="md" width={220}>
+                <Menu.Target>
+                    <ActionIcon size="lg" variant="default" aria-label="Settings" style={{border:'none'}}>
+                        <IconDotsVertical stroke={1.5} />
+                    </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                    <Menu.Item
+                        color="red"
+                        leftSection={<IconToggleRightFilled/>}
+                    >
+                        Deactivate
+                    </Menu.Item>
+                    <Menu.Label>Restricts functionality & editing You can reactivate at any time</Menu.Label>
+                </Menu.Dropdown>
+            </Menu>
+        )
+    }
+
     const tableData = {
         caption: 'List of intakes you have been added to',
-        head: ['UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', 'Detail'],
-        body: (intakes && intakes.length > 0) ? intakes.map(item => [item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
+        head: ['', 'UID', 'Initial submission date', 'Study Title', 'PI Name', 'Status', ''],
+        body: (intakes && intakes.length > 0) ? intakes.map(item => [renderMenu(), item.intake_id, item.completion_timestamp, item.research_title, item.pi_name, item.intake_complete, renderNavButton(item.intake_id)]) : []
     }
 
     // const finishedTable = {
@@ -134,7 +157,6 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
-                            striped
                             data={tableData}
                         />
                     </Card.Section>
@@ -151,7 +173,6 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
-                            striped
                             data={finishedTable}
                         />
                     </Card.Section>
