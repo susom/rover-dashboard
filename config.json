@@ -38,7 +38,8 @@
     "auth-ajax-actions": [
         "fetchIntakeParticipation",
         "getUserDetail",
-        "fetchRequiredSurveys"
+        "fetchRequiredSurveys",
+        "toggleProjectActivation"
     ],
     "project-settings": [
         {
