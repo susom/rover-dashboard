@@ -116,6 +116,7 @@ class IntakeDashboard extends AbstractExternalModule
             'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
             'getUserDetail' => $this->getUserDetail($payload),
             'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
+            'toggleProjectActivation' => $this->toggleProjectActivation($payload),
             default => throw new Exception ("Action $action is not defined"),
         };
     }
@@ -207,14 +208,51 @@ class IntakeDashboard extends AbstractExternalModule
                         //TODO Iterate through all linked children and overwrite with new parent data
                     }
                 }
-
-
             }
+        } catch (\Exception $e ) {
+            $this->handleGlobalError($e);
+        }
+
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
+    public function toggleProjectActivation($payload): string
+    {
+        try {
+            if (empty($payload['uid'])) {
+                throw new \Exception("UID is empty");
+            }
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+
+            $completedIntake = $this->fetchParentRecordData($parent_id, $payload['uid'], $pSettings['universal-survey-event']);
+            $completedIntake = reset($completedIntake);
+            if($completedIntake['intake_active'] === "0")
+                $completedIntake['intake_active'] = "1";
+            else //if active is null or any other value besides 0, set explicitly as inactive.
+                $completedIntake['intake_active'] = "0";
+
+            //Set activation date change
+            $completedIntake['active_change_date'] = date('Y-m-d');
+            $saveData = [
+                $completedIntake
+            ];
+
+            // Save data using REDCap's saveData function
+            $response = REDCap::saveData($parent_id, 'json', json_encode($saveData), 'overwrite');
+            if(!empty($response['errors'])){
+                throw new \Exception("Error on reactivation/deactivation save" . implode(', ', $response['errors']));
+            }
+            return json_encode(["data" => $completedIntake, "success" => true]);
         } catch (\Exception $e) {
             $this->handleGlobalError($e);
         }
 
     }
+
 
     /**
      * @return
@@ -245,7 +283,7 @@ class IntakeDashboard extends AbstractExternalModule
         $userParams = [
             "return_format" => "json",
             "project_id" => $projectId,
-            "events" => $childEventId
+            "events" => $childEventName
         ];
 
         //Get all users that exist within the permission schema for the dashboard
@@ -346,7 +384,7 @@ class IntakeDashboard extends AbstractExternalModule
         ];
 
         // Save data using REDCap's saveData function
-        return REDCap::saveData('58', 'json', json_encode($saveData), 'overwrite');
+        return REDCap::saveData($parent_id, 'json', json_encode($saveData), 'overwrite');
     }
 
     /**
@@ -443,10 +481,13 @@ class IntakeDashboard extends AbstractExternalModule
                 foreach ($intakeDetails as $detail) {
                     if ($detail['record_id'] === $intake['intake_id']) {
                         $survey_id = $proj->forms[$pSettings['universal-survey-form-immutable']]['survey_id'];
-                        $intake['completion_timestamp'] = Survey::isResponseCompleted($survey_id, $detail['record_id'], $pSettings['universal-survey-event'], 1, true);
+                        $timestamp = Survey::isResponseCompleted($survey_id, $detail['record_id'], $pSettings['universal-survey-event'], 1, true);
+                        $intake['completion_timestamp'] = date('Y-m-d', strtotime($timestamp));
                         $intake['intake_complete'] = $detail['intake_complete'] ?? null;
                         $intake['pi_name'] = trim($detail['pi_f_name'] . " " . $detail['pi_l_name']);;
                         $intake['research_title'] = $detail['research_title'] ?? null;
+                        $intake['intake_active'] = $detail['intake_active'] ?? null;
+                        $intake['active_change_date'] = $detail['active_change_date'] ?? null;
                         break;
                     }
                 }
@@ -469,6 +510,14 @@ class IntakeDashboard extends AbstractExternalModule
         }
     }
 
+    public function checkIntakeActivity($parentId, $uid, $surveyEvent){
+        $completedIntake = $this->fetchParentRecordData($parentId, $uid, $surveyEvent);
+        $completedIntake = reset($completedIntake);
+        if($completedIntake['intake_active'] === "0") //If explicitly set to zero return false, otherwise default to true
+            return false;
+        return true;
+    }
+
     /**
      * @param $payload
      * @return string
@@ -480,11 +529,16 @@ class IntakeDashboard extends AbstractExternalModule
                 throw new \Exception("Either username or UID is empty");
             }
 
+
             $username = $payload['username'];
             $uid = $payload['uid'];
             $parentId = $this->getSystemSetting('parent-project');
             $projectSettings = $this->getProjectSettings($parentId);
             $project = new Project($parentId);
+
+            //Prevent detail page rendering (navigating) for inactive intake projects
+            if(!$this->checkIntakeActivity($parentId, $uid, $projectSettings['universal-survey-event']))
+                throw new \Exception("Intake is inactive, no detail access can be granted");
 
             $userEventName = $this->generateREDCapEventName($project, $projectSettings['user-info-event']);
 
