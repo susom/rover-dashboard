@@ -1,10 +1,9 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, ActionIcon, Card, Menu, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
+import {AppShell, Button, Pagination, Card, ActionIcon, Table, Text, Divider, Title, Blockquote, List, Loader, Tooltip} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import {IconExternalLink, IconInfoCircle} from '@tabler/icons-react';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
-import { IconPlus, IconDotsVertical, IconArrowRight, IconToggleRightFilled} from '@tabler/icons-react';
+import { IconPlus, IconInfoCircle, IconArrowRight, IconQuestionMark} from '@tabler/icons-react';
 import {TableMenu} from "../../components/TableMenu/TableMenu.jsx";
 
 import './dashboard.css';
@@ -15,6 +14,10 @@ export function Dashboard() {
     const [loading, { toggle, close }] = useDisclosure(true);
     const [newRequestLink, setNewRequestLink] = useState('')
     const navigate = useNavigate()
+    const [activePage, setActivePage] = useState(1);
+    const [inactivePage, setInactivePage] = useState(1);
+
+
     useEffect(() => {
         fetchIntakes()
     }, [])
@@ -69,7 +72,7 @@ export function Dashboard() {
 
     const toggleActiveCallback = (res) => {
         setIntakes((prevIntakes) => {
-            const updatedIntakes = prevIntakes.map((item) => {
+            return prevIntakes.map((item) => {
                 if (item.intake_id === res?.data?.record_id) {
                     return {
                         ...item,
@@ -79,7 +82,6 @@ export function Dashboard() {
                 }
                 return item;
             });
-            return updatedIntakes;
         });
     }
 
@@ -108,12 +110,24 @@ export function Dashboard() {
         )
     }
 
+    const chunk = (array, size) => {
+        if (!array.length) {
+            return [];
+        }
+        const head = array.slice(0, size);
+        const tail = array.slice(size);
+        return [head, ...chunk(tail, size)];
+    }
+
     const filteredIntakes = intakes?.filter(item => item.intake_active !== "0") || [];
     const filteredOutIntakes = intakes?.filter(item => item.intake_active === "0") || [];
+
+    // Chunk the filteredIntakes array into pages
+    const pagesActive = chunk(filteredIntakes, 3);
+    const pagesInactive = chunk(filteredOutIntakes, 3);
     const tableData = {
-        caption: 'List of intakes you have been added to',
         head: ['', 'UID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Status', ''],
-        body: filteredIntakes.map(item => [
+        body: pagesActive[activePage - 1]?.map(item => [
             renderMenu(item),
             item?.intake_id,
             item?.completion_timestamp,
@@ -121,20 +135,20 @@ export function Dashboard() {
             item?.pi_name,
             item?.intake_complete,
             renderNavButton(item.intake_id)
-        ])
+        ]) || [],
     };
 
     const finishedTable = {
-        caption: 'List of filtered out intakes',
         head: ['', 'UID', 'Activity Change Date', 'Study Title', 'PI Name'],
-        body: filteredOutIntakes.map(item => [
+        body: pagesInactive[inactivePage - 1]?.map(item => [
             renderMenu(item),
             item?.intake_id,
             item?.active_change_date,
             item?.research_title,
             item?.pi_name,
-        ])
+        ]) || [],
     };
+
 
     return (
         <AppShell
@@ -166,12 +180,23 @@ export function Dashboard() {
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <Text fw={500}>Active</Text>
+                            <Tooltip label="List of intakes you have been added to">
+                                <ActionIcon variant="subtle">
+                                    <IconQuestionMark stroke={1.5}/>
+                                </ActionIcon>
+                            </Tooltip>
                             {loading && <Loader size={32} />}
                         </div>
                     </Card.Section>
                     <Card.Section>
                         <Table
                             data={tableData}
+                        />
+                        <Pagination
+                            total={pagesActive.length}
+                            value={activePage}
+                            onChange={setActivePage}
+                            m="md"
                         />
                     </Card.Section>
                 </Card>
@@ -182,12 +207,24 @@ export function Dashboard() {
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <Text fw={500}>Inactive</Text>
+                            <Tooltip label="List of deactivated intake projects - these entries have no dashboard functionality">
+                                <ActionIcon variant="subtle">
+                                    <IconQuestionMark stroke={1.5}/>
+                                </ActionIcon>
+                            </Tooltip>
                             {loading && <Loader size={32} />}
                         </div>
                     </Card.Section>
                     <Card.Section>
                         <Table
                             data={finishedTable}
+                        />
+                        <Pagination
+                            total={pagesInactive.length}
+                            value={inactivePage}
+                            onChange={setInactivePage}
+                            mb="md"
+                            ml="sm"
                         />
                     </Card.Section>
                 </Card>
