@@ -16,7 +16,6 @@ function defaultError(error) {
 export function TableMenu({rowData, toggleSuccess = defaultSuccess, toggleError = defaultError}){
 
     const toggle = () => {
-        console.log(rowData)
         let jsmoModule;
         if (import.meta?.env?.MODE !== 'development')
             jsmoModule = ExternalModules.Stanford.IntakeDashboard;
