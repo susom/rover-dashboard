@@ -116,6 +116,7 @@ class IntakeDashboard extends AbstractExternalModule
             'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
             'getUserDetail' => $this->getUserDetail($payload),
             'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
+            'toggleProjectActivation' => $this->toggleProjectActivation($payload),
             default => throw new Exception ("Action $action is not defined"),
         };
     }
@@ -163,39 +164,163 @@ class IntakeDashboard extends AbstractExternalModule
                     $settings['parentId'] = $parent_id;
                     $child = new Child($this, $project_id, $settings);
                     $child->saveParentData($record);
-                }
-
-                if($instrument === $pSettings['universal-survey-form-immutable']) {
+                } else {
                     $fields = reset($completedIntake);
 
-                    $requesterSunetSid = $fields['requester_sunet_sid'];
-                    $piSunetSid = $fields['pi_sunet_sid'];
-                    $primaryContactSunetSid = $fields['sunet_sid'];
+                    // Universal immutable survey form has been saved for the first time (new intake)
+                    if($instrument === $pSettings['universal-survey-form-immutable']) {
+                        $requesterSunetSid = $fields['requester_sunet_sid'];
+                        $piSunetSid = $fields['pi_sunet_sid'];
+                        $primaryContactSunetSid = $fields['sunet_sid'];
 
-                    // Determine username
-                    $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
-                    $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
-                    $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
+                        // Determine username
+                        $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
+                        $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
+                        $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
 
-                    $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
+                        $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
 
-                    foreach ($usernames as $username) {
-                        if (!empty($username)) {
-                            $this->saveUser($username, $fields);
-                        } else {
-                            $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
+                        foreach ($usernames as $username) {
+                            if (!empty($username)) {
+                                $this->saveUser($username, $fields['record_id']);
+                            } else {
+                                $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
+                            }
                         }
-                    }
 
-                } else if($instrument === $pSettings['universal-survey-form-mutable']) {
-                    //TODO implement mutable survey
+                    } else if($instrument === $pSettings['universal-survey-form-mutable']) {
+                        // Editable survey has been altered
+                        // Have to accomplish two objectives here:
+                        // 1. remove users who have been unchecked from the survey
+                        // 2. create new entries for users
+                        $users = [];
+                        for ($i = 1; $i <= 3; $i++) {
+                            $username = $fields["op_sunet_sid_$i"];
+                            $first = $fields["op_fname_$i"];
+                            $last = $fields["op_lname_$i"];
+                            $email = $fields["op_email_$i"];
+                            $users[] = $this->determineREDCapUsername($username, $email);
+                        }
+
+                        $proj = new Project($parent_id);
+                        $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
+                        $this->validateUserPermissions($project_id, $record, $event_name);
+                        //TODO Iterate through all linked children and overwrite with new parent data
+                    }
                 }
             }
+        } catch (\Exception $e ) {
+            $this->handleGlobalError($e);
+        }
+
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
+    public function toggleProjectActivation($payload): string
+    {
+        try {
+            if (empty($payload['uid'])) {
+                throw new \Exception("UID is empty");
+            }
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+
+            $completedIntake = $this->fetchParentRecordData($parent_id, $payload['uid'], $pSettings['universal-survey-event']);
+            $completedIntake = reset($completedIntake);
+            if($completedIntake['intake_active'] === "0")
+                $completedIntake['intake_active'] = "1";
+            else //if active is null or any other value besides 0, set explicitly as inactive.
+                $completedIntake['intake_active'] = "0";
+
+            //Set activation date change
+            $completedIntake['active_change_date'] = date('Y-m-d');
+            $saveData = [
+                $completedIntake
+            ];
+
+            // Save data using REDCap's saveData function
+            $response = REDCap::saveData($parent_id, 'json', json_encode($saveData), 'overwrite');
+            if(!empty($response['errors'])){
+                throw new \Exception("Error on reactivation/deactivation save" . implode(', ', $response['errors']));
+            }
+            return json_encode(["data" => $completedIntake, "success" => true]);
         } catch (\Exception $e) {
             $this->handleGlobalError($e);
         }
 
     }
+
+
+    /**
+     * @return
+     *
+     */
+    public function validateUserPermissions($projectId, $recordId, $childEventName) {
+        $parentParams = [
+            "return_format" => "json",
+            "project_id" => $projectId,
+            "records" => $recordId,
+            "fields" => ['op_sunet_sid_1', 'op_sunet_sid_2', 'op_sunet_sid_3', 'op_email_1', 'op_email_2', 'op_email_3', 'pi_sunet_sid', 'requester_sunet_sid']
+        ];
+
+        // This parent data has already been saved, let it be source of truth
+        $parentData = json_decode(REDCap::getData($parentParams), true);
+        $parentData = reset($parentData);
+
+        $savedUsers = array_filter([
+                $parentData['pi_sunet_sid'] ?? null => 'pi_sunet_sid',
+                $parentData['requester_sunet_sid'] ?? null => 'requester_sunet_sid',
+                $parentData['op_sunet_sid_1'] ?? null => 'op_sunet_sid_1',
+                $parentData['op_sunet_sid_2'] ?? null => 'op_sunet_sid_2',
+                $parentData['op_sunet_sid_3'] ?? null => 'op_sunet_sid_3',
+        ], function ($key) {
+            return !empty($key);
+        }, ARRAY_FILTER_USE_KEY);
+
+        $userParams = [
+            "return_format" => "json",
+            "project_id" => $projectId,
+            "events" => $childEventName
+        ];
+
+        //Get all users that exist within the permission schema for the dashboard
+        $fullUserData = json_decode(REDCap::getData($userParams), true);
+        // Goal : check if user already has access, if removed, remove permissions, if not add permissions.
+
+        $deletions = [];
+        // Deletion first
+        // Iterate through each instance of user_info
+        foreach($fullUserData as $entry) {
+            if($entry['intake_id'] === $recordId) { // We have encountered a user that has access to this intake on dashboard
+                $username = $entry['record_id'];
+                if(!array_key_exists($username, $savedUsers)) { // saved users are only usernames that should have access.
+                    //username does not exist as an entry in fullUserData (source of truth), remove
+                    $deletions[] = $entry;
+//                    $this->saveUser($username, $recordId);
+                } else { // User exists in fullUserData & saved users
+                    //remove username from the list of users we have to check for later removal
+                    unset($savedUsers[$username]);
+                }
+            }
+        }
+
+
+        //Delete users, this will allow users to delete themselves
+        foreach($deletions as $userEntry) {
+            $res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, $childEventName, $userEntry['redcap_repeat_instrument'], $userEntry['redcap_repeat_instance']);
+            $a = 1;
+        }
+
+        // SavedUsers now only has individuals who should be added
+        foreach($savedUsers as $username => $role) {
+            $res = $this->saveUser($username, $recordId);
+        }
+
+    }
+
 
     public function determineREDCapUsername($su_sid_field, $email_field) {
         if (!isset($email_field)) {
@@ -224,7 +349,7 @@ class IntakeDashboard extends AbstractExternalModule
      * @throws Exception
      * Saves a user in the hash table with reference to a universal intake submission
      */
-    public function saveUser($username, $formData)
+    public function saveUser($username, $recordId)
     {
         $parent_id = $this->getSystemSetting('parent-project');
         $pSettings = $this->getProjectSettings($parent_id);
@@ -250,7 +375,7 @@ class IntakeDashboard extends AbstractExternalModule
             [
                 "record_id" => $username,
                 "type" => "Secondary",
-                "intake_id" => $formData['record_id'],
+                "intake_id" => $recordId,
                 "redcap_event_name" => $event_name,
                 "redcap_repeat_instrument" => $form_name,
                 "redcap_repeat_instance" => $next_instance_id,
@@ -259,7 +384,7 @@ class IntakeDashboard extends AbstractExternalModule
         ];
 
         // Save data using REDCap's saveData function
-        return REDCap::saveData('58', 'json', json_encode($saveData), 'overwrite');
+        return REDCap::saveData($parent_id, 'json', json_encode($saveData), 'overwrite');
     }
 
     /**
@@ -356,10 +481,13 @@ class IntakeDashboard extends AbstractExternalModule
                 foreach ($intakeDetails as $detail) {
                     if ($detail['record_id'] === $intake['intake_id']) {
                         $survey_id = $proj->forms[$pSettings['universal-survey-form-immutable']]['survey_id'];
-                        $intake['completion_timestamp'] = Survey::isResponseCompleted($survey_id, $detail['record_id'], $pSettings['universal-survey-event'], 1, true);
+                        $timestamp = Survey::isResponseCompleted($survey_id, $detail['record_id'], $pSettings['universal-survey-event'], 1, true);
+                        $intake['completion_timestamp'] = date('Y-m-d', strtotime($timestamp));
                         $intake['intake_complete'] = $detail['intake_complete'] ?? null;
                         $intake['pi_name'] = trim($detail['pi_f_name'] . " " . $detail['pi_l_name']);;
                         $intake['research_title'] = $detail['research_title'] ?? null;
+                        $intake['intake_active'] = $detail['intake_active'] ?? null;
+                        $intake['active_change_date'] = $detail['active_change_date'] ?? null;
                         break;
                     }
                 }
@@ -382,6 +510,14 @@ class IntakeDashboard extends AbstractExternalModule
         }
     }
 
+    public function checkIntakeActivity($parentId, $uid, $surveyEvent){
+        $completedIntake = $this->fetchParentRecordData($parentId, $uid, $surveyEvent);
+        $completedIntake = reset($completedIntake);
+        if($completedIntake['intake_active'] === "0") //If explicitly set to zero return false, otherwise default to true
+            return false;
+        return true;
+    }
+
     /**
      * @param $payload
      * @return string
@@ -393,11 +529,16 @@ class IntakeDashboard extends AbstractExternalModule
                 throw new \Exception("Either username or UID is empty");
             }
 
+
             $username = $payload['username'];
             $uid = $payload['uid'];
             $parentId = $this->getSystemSetting('parent-project');
             $projectSettings = $this->getProjectSettings($parentId);
             $project = new Project($parentId);
+
+            //Prevent detail page rendering (navigating) for inactive intake projects
+            if(!$this->checkIntakeActivity($parentId, $uid, $projectSettings['universal-survey-event']))
+                throw new \Exception("Intake is inactive, no detail access can be granted");
 
             $userEventName = $this->generateREDCapEventName($project, $projectSettings['user-info-event']);
 
