@@ -188,8 +188,8 @@ class IntakeDashboard extends AbstractExternalModule
                             }
                         }
 
-                    } else if($instrument === $pSettings['universal-survey-form-mutable']) {
-                        // Editable survey has been altered
+                    } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered
+
                         // Have to accomplish two objectives here:
                         // 1. remove users who have been unchecked from the survey
                         // 2. create new entries for users
@@ -222,14 +222,15 @@ class IntakeDashboard extends AbstractExternalModule
     public function toggleProjectActivation($payload): string
     {
         try {
-            if (empty($payload['uid'])) {
+            if (empty($payload['uid']))
                 throw new \Exception("UID is empty");
-            }
+
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
 
             $completedIntake = $this->fetchParentRecordData($parent_id, $payload['uid'], $pSettings['universal-survey-event']);
             $completedIntake = reset($completedIntake);
+
             if($completedIntake['intake_active'] === "0")
                 $completedIntake['intake_active'] = "1";
             else //if active is null or any other value besides 0, set explicitly as inactive.
@@ -237,6 +238,8 @@ class IntakeDashboard extends AbstractExternalModule
 
             //Set activation date change
             $completedIntake['active_change_date'] = date('Y-m-d');
+            $completedIntake['deactivation_reason'] = $payload['reason'] ?? null;
+            $completedIntake['deactivation_user'] = $_SESSION['username'] ?? null;
             $saveData = [
                 $completedIntake
             ];
@@ -263,7 +266,7 @@ class IntakeDashboard extends AbstractExternalModule
             "return_format" => "json",
             "project_id" => $projectId,
             "records" => $recordId,
-            "fields" => ['op_sunet_sid_1', 'op_sunet_sid_2', 'op_sunet_sid_3', 'op_email_1', 'op_email_2', 'op_email_3', 'pi_sunet_sid', 'requester_sunet_sid']
+            "fields" => ['op_sunet_sid_1', 'op_sunet_sid_2', 'op_sunet_sid_3', 'op_email_1', 'op_email_2', 'op_email_3', 'pi_sunet_sid', 'sunet_sid']
         ];
 
         // This parent data has already been saved, let it be source of truth
@@ -271,8 +274,8 @@ class IntakeDashboard extends AbstractExternalModule
         $parentData = reset($parentData);
 
         $savedUsers = array_filter([
+                $parentData['sunet_sid'] ?? null => 'sunet_sid',
                 $parentData['pi_sunet_sid'] ?? null => 'pi_sunet_sid',
-                $parentData['requester_sunet_sid'] ?? null => 'requester_sunet_sid',
                 $parentData['op_sunet_sid_1'] ?? null => 'op_sunet_sid_1',
                 $parentData['op_sunet_sid_2'] ?? null => 'op_sunet_sid_2',
                 $parentData['op_sunet_sid_3'] ?? null => 'op_sunet_sid_3',
@@ -310,7 +313,9 @@ class IntakeDashboard extends AbstractExternalModule
 
         //Delete users, this will allow users to delete themselves
         foreach($deletions as $userEntry) {
+            //$res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, null, null, null);
             $res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, $childEventName, $userEntry['redcap_repeat_instrument'], $userEntry['redcap_repeat_instance']);
+
             $a = 1;
         }
 
@@ -537,8 +542,8 @@ class IntakeDashboard extends AbstractExternalModule
             $project = new Project($parentId);
 
             //Prevent detail page rendering (navigating) for inactive intake projects
-            if(!$this->checkIntakeActivity($parentId, $uid, $projectSettings['universal-survey-event']))
-                throw new \Exception("Intake is inactive, no detail access can be granted");
+//            if(!$this->checkIntakeActivity($parentId, $uid, $projectSettings['universal-survey-event']))
+//                throw new \Exception("Intake is inactive, no detail access can be granted");
 
             $userEventName = $this->generateREDCapEventName($project, $projectSettings['user-info-event']);
 
@@ -617,13 +622,17 @@ class IntakeDashboard extends AbstractExternalModule
                 throw new \Exception("No Universal ID passed to fetchRequiredSurveys");
 
             $parentId = $this->getSystemSetting('parent-project');
+            $project = new \Project($parentId);
+
             $projectSettings = $this->getProjectSettings($parentId);
 
-            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event']);
+            $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-immutable']);
+            $mutableIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-mutable']);
+
             $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
-            $project = new \Project($parentId); //TODO Change if record_id is changed
-            $pretty = $this->filterHiddenFields($project, $completedIntake[0]);
+            $pretty = $completedIntake[0];
+            $pretty = $this->filterHiddenFields($project, $pretty);
 
             $childSurveys = $project->surveys;
             $mutableUrl = [];
@@ -635,12 +644,17 @@ class IntakeDashboard extends AbstractExternalModule
 
             //Grab survey completion timestamp
             $survey_id = $project->forms[$projectSettings['universal-survey-form-immutable']]['survey_id'];
+
+            // Reduce array
             $completedIntake = reset($completedIntake);
+            $mutableIntake = reset($mutableIntake);
+
             $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
 
             return json_encode([
                 "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
-                "completed_form_detail" => $completedIntake,
+                "completed_form_immutable" => $completedIntake,
+                "completed_form_mutable" => $mutableIntake,
                 "completed_form_pretty" => $pretty,
                 "mutable_url" => $mutableUrl,
                 "success" => true
@@ -656,9 +670,9 @@ class IntakeDashboard extends AbstractExternalModule
      * @param $universalId
      * @return mixed
      */
-    private function fetchParentRecordData($parentId, $universalId, $event)
+    private function fetchParentRecordData($parentId, $universalId, $event, $form = 'intake')
     {
-        $formFields =  json_decode(REDCap::getDataDictionary($parentId, 'json', true, null, 'intake'), true);
+        $formFields =  json_decode(REDCap::getDataDictionary($parentId, 'json', true, null, $form), true);
         $fields = [];
 
         foreach($formFields as $field)
