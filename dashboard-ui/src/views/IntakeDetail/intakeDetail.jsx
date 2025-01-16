@@ -22,8 +22,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { IconBook, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
-
 import {useNavigate, useParams} from "react-router-dom";
+import {ChildContent} from "../ChildContent/childContent.jsx";
 
 export function IntakeDetail() {
     const [overallStep, setOverallStep] = useState(1);
@@ -32,6 +32,7 @@ export function IntakeDetail() {
     const [activeTab, setActiveTab] = useState(""); // Track active tab
     const [data, setData] = useState([]); // Stubbed dynamic data
     const [detail, setDetail] = useState("");
+    const [detailMutable, setDetailMutable] = useState("")
     const [mutableUrl, setmutableUrl] = useState("")
     const params = useParams()
     const navigate = useNavigate();
@@ -46,7 +47,8 @@ export function IntakeDetail() {
     const successCallback = (res) => {
         console.log('success', res)
         setData(res?.surveys)
-        setDetail(res?.completed_form_detail)
+        setDetail(res?.completed_form_immutable)
+        setDetailMutable(res?.completed_form_mutable)
         setPretty(res?.completed_form_pretty)
         setmutableUrl(res?.mutable_url)
 
@@ -64,7 +66,6 @@ export function IntakeDetail() {
 
     // Stubbed dynamic data
     useEffect(() => {
-        console.warn("Using stubbed data for UI testing");
 
         let jsmoModule;
         if (import.meta?.env?.MODE !== 'development')
@@ -177,28 +178,32 @@ export function IntakeDetail() {
         if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
-                    <Badge m="sm" color="green">Complete</Badge>
-                    <Blockquote
-                        color="green"
-                        mb="md"
-                        radius="md"
-                    >Thank you for completing the survey, click the following link to edit your previous submission
-                    </Blockquote>
+                    {/*<Badge m="sm" color="green">Complete</Badge>*/}
+                    {/*<Blockquote*/}
+                    {/*    color="green"*/}
+                    {/*    mb="md"*/}
+                    {/*    radius="md"*/}
+                    {/*>Thank you for completing the survey, click the following link to edit your previous submission*/}
+                    {/*</Blockquote>*/}
+                    <ChildContent
+                        parentInfo={detail}
+                        childInfo={act}
+                    />
                     {/*<Group spacing="xs" align="center" mt="xs">*/}
                     {/*    <Badge color="green">Complete</Badge>*/}
                     {/*    <Text fw={500}>{act?.title}</Text>*/}
                     {/*</Group>*/}
-                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <Button
-                            size="md"
-                            color="green"
-                            component="a"
-                            href={data.find((tab) => tab?.title === activeTab)?.url}
-                            rightSection={<IconExternalLink size={20} />}
-                        >
-                            Edit Survey
-                        </Button>
-                    </Box>
+                    {/*<Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>*/}
+                    {/*    <Button*/}
+                    {/*        size="md"*/}
+                    {/*        color="green"*/}
+                    {/*        component="a"*/}
+                    {/*        href={data.find((tab) => tab?.title === activeTab)?.url}*/}
+                    {/*        rightSection={<IconExternalLink size={20} />}*/}
+                    {/*    >*/}
+                    {/*        Edit Survey*/}
+                    {/*    </Button>*/}
+                    {/*</Box>*/}
                 </>
             )
         } else { // user has never submitted before
@@ -322,16 +327,26 @@ export function IntakeDetail() {
 
                 {/* Project Info */}
                 <Blockquote
-                    color="blue"
+                    color={detail?.intake_active === "0" ? "red" : "blue"}
                     iconSize={36}
                     mt="lg"
                     radius="md"
                     icon={<IconInfoCircle />}
                 >
-
+                    {detail?.intake_active === "0" &&
+                        <>
+                            <Group spacing="xs" align="center" mt="xs">
+                                <Text>Intake Inactive</Text>
+                            </Group>
+                            <Group spacing="xs" align="center" mt="xs">
+                                <Text size="sm" c="dimmed">Intake deactivated by</Text>
+                                <Text size="sm" fw={700}>{detail?.deactivation_user}</Text>
+                            </Group>
+                        </>
+                    }
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Project Name:</Text>
-                        <Text size="sm" fw={700}>{detail?.research_title}</Text>
+                        <Text size="sm" fw={700}>{detailMutable?.research_title}</Text>
                     </Group>
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Universal ID #:</Text>
@@ -339,7 +354,7 @@ export function IntakeDetail() {
                     </Group>
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Principal Investigator:</Text>
-                        <Text size="sm" fw={700}>{`${detail?.pi_f_name} ${detail?.pi_l_name}`}</Text>
+                        <Text size="sm" fw={700}>{`${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}`}</Text>
                     </Group>
 
                     {/*<List size="sm" spacing="xs">*/}
