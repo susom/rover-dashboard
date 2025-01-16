@@ -1,25 +1,23 @@
-import {ActionIcon, Menu} from "@mantine/core";
-import {IconDotsVertical, IconToggleRightFilled, IconToggleLeftFilled} from "@tabler/icons-react";
+import {ActionIcon, Menu, Modal, Alert, Button, TextInput, List, Text} from "@mantine/core";
+import {IconDots, IconToggleRightFilled, IconToggleLeftFilled, IconDotsCircleHorizontal, IconInfoTriangle} from "@tabler/icons-react";
+import { useDisclosure } from '@mantine/hooks';
 
-import React from "react";
+import React, { useState } from "react";
 
-// Default success handler
-function defaultSuccess(response) {
-    console.log('Success:', response);
-}
+export function TableMenu({rowData, toggleSuccess, toggleError}){
+    const [opened, { open, close }] = useDisclosure(false);
+    const [reason, setReason] = useState('')
 
-// Default error handler
-function defaultError(error) {
-    console.error('Error:', error);
-}
+    function onSuccess(response) {
+        console.log('Success:', response);
+        close()
+        toggleSuccess(response)
+    }
 
-export function TableMenu({rowData, toggleSuccess = defaultSuccess, toggleError = defaultError}){
-
-    const toggle = () => {
-        let jsmoModule;
-        if (import.meta?.env?.MODE !== 'development')
-            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
-        jsmoModule.toggleProjectActivation({"uid": rowData?.intake_id}, toggleSuccess, toggleError);
+    function onError(error) {
+        console.error('Error:', error);
+        close()
+        toggleError(error)
     }
 
     const renderActiveItem = () => {
@@ -32,26 +30,59 @@ export function TableMenu({rowData, toggleSuccess = defaultSuccess, toggleError 
                 <Menu.Item
                     color={isDeactivated ? "green" : "red"}
                     leftSection={isDeactivated ? <IconToggleLeftFilled /> : <IconToggleRightFilled />}
-                    onClick={toggle}
+                    onClick={open}
                 >
                     {isDeactivated ? "Activate" : "Deactivate"}
                 </Menu.Item>
                 <Menu.Label>{isDeactivated ? inactiveLabel : activeLabel}</Menu.Label>
             </>
         );
-    };
+    }
 
-
+    const onInputChange = (e) => setReason(e.currentTarget.value)
+    const onSubmit = () => {
+        console.log(reason)
+        let jsmoModule;
+        if (import.meta?.env?.MODE !== 'development')
+            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+        jsmoModule.toggleProjectActivation({"uid": rowData?.intake_id, "reason": reason}, onSuccess, onError);
+    }
+    const icon = <IconInfoTriangle/>
     return (
-        <Menu position="right-start" shadow="md" width={220}>
-            <Menu.Target>
-                <ActionIcon size="lg" variant="default" aria-label="Settings" style={{border:'none'}}>
-                    <IconDotsVertical stroke={1.5} />
+        <>
+            <Modal title="Intake Deactivation" size="xl" opened={opened} onClose={close} centered>
+                <Alert variant="light" color="red" title="Warning" icon={icon}>
+                    Are you sure you want to deactivate this project?
+                    <List size="sm">
+                        <List.Item>Deactivating your project will nullify all pending requests affiliated with with this intake</List.Item>
+                        <List.Item>You will retain the ability to view all previously submitted requests affiliated with this intake</List.Item>
+                        <List.Item>You will be unable to submit new child requests for this main intake</List.Item>
+                    </List>
+                </Alert>
+                <TextInput
+                    mt="md"
+                    withAsterisk
+                    description="Reasoning"
+                    placeholder="Funding, timing, etc ..."
+                    onChange = {onInputChange}
+                />
+                <div style={{display: 'flex', justifyContent: 'center', marginTop: '1rem'}}>
+                    <Button
+                        onClick={onSubmit}
+                        disabled={!reason.length}
+                    >Confirm</Button>
+                </div>
+            </Modal>
+            <Menu position="right-start" shadow="md" width={220}>
+                <Menu.Target>
+                    <ActionIcon size="lg" variant="default" aria-label="Settings" style={{border:'none'}}>
+                    <IconDots stroke={1.5} />
                 </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
                 {renderActiveItem()}
             </Menu.Dropdown>
         </Menu>
+        </>
     )
 }
