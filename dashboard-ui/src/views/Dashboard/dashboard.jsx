@@ -3,7 +3,7 @@ import {AppShell, Button, Pagination, Card, ActionIcon, Table, Text, Divider, Ti
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
-import { IconPlus, IconInfoCircle, IconArrowRight, IconQuestionMark} from '@tabler/icons-react';
+import { IconPlus, IconInfoCircle, IconArrowRight, IconQuestionMark, IconLogin2} from '@tabler/icons-react';
 import {TableMenu} from "../../components/TableMenu/TableMenu.jsx";
 
 import './dashboard.css';
@@ -71,6 +71,7 @@ export function Dashboard() {
     }
 
     const toggleActiveCallback = (res) => {
+        console.log('inside callback', res)
         setIntakes((prevIntakes) => {
             return prevIntakes.map((item) => {
                 if (item.intake_id === res?.data?.record_id) {
@@ -92,9 +93,9 @@ export function Dashboard() {
                 onClick={() => transition(id)} // Only created once per id
                 variant="light"
                 size="xs"
-                rightSection={<IconArrowRight />}
+                rightSection={<IconLogin2 />}
             >
-                Detail
+                Open
             </Button>
         ),
         [] // Dependencies are empty so this function will only be created once
@@ -126,26 +127,25 @@ export function Dashboard() {
     const pagesActive = chunk(filteredIntakes, 3);
     const pagesInactive = chunk(filteredOutIntakes, 3);
     const tableData = {
-        head: ['', 'UID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Status', ''],
+        head: ['UID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
         body: pagesActive[activePage - 1]?.map(item => [
-            renderMenu(item),
             item?.intake_id,
             item?.completion_timestamp,
             item?.research_title,
             item?.pi_name,
-            item?.intake_complete,
-            renderNavButton(item.intake_id)
+            renderNavButton(item.intake_id),
+            renderMenu(item),
         ]) || [],
     };
 
     const finishedTable = {
-        head: ['', 'UID', 'Activity Change Date', 'Study Title', 'PI Name'],
+        head: ['UID', 'Activity Change Date', 'Study Title', 'PI Name', 'Intake Details'],
         body: pagesInactive[inactivePage - 1]?.map(item => [
-            renderMenu(item),
             item?.intake_id,
             item?.active_change_date,
             item?.research_title,
             item?.pi_name,
+            renderNavButton(item.intake_id)
         ]) || [],
     };
 
@@ -196,7 +196,7 @@ export function Dashboard() {
                             total={pagesActive.length}
                             value={activePage}
                             onChange={setActivePage}
-                            m="md"
+                            m="lg"
                         />
                     </Card.Section>
                 </Card>
@@ -223,8 +223,7 @@ export function Dashboard() {
                             total={pagesInactive.length}
                             value={inactivePage}
                             onChange={setInactivePage}
-                            mb="md"
-                            ml="sm"
+                            m="lg"
                         />
                     </Card.Section>
                 </Card>
