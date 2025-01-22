@@ -7,7 +7,6 @@ require_once "Utilities/Sanitizer.php";
 //require_once "classes/ModuleCore/ModuleCore.php";
 require_once("classes/Child.php");
 
-use ExternalModules\AbstractExternalModule;
 use ExternalModules;
 use Exception;
 use REDCap;
@@ -15,7 +14,7 @@ use Project;
 use Survey;
 
 
-class IntakeDashboard extends AbstractExternalModule
+class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 {
     use emLoggerTrait;
 
@@ -157,7 +156,6 @@ class IntakeDashboard extends AbstractExternalModule
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
             if(!empty($completedIntake)){
-
                 // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
                     $settings = $pSettings;
@@ -169,41 +167,19 @@ class IntakeDashboard extends AbstractExternalModule
 
                     // Universal immutable survey form has been saved for the first time (new intake)
                     if($instrument === $pSettings['universal-survey-form-immutable']) {
-                        $requesterSunetSid = $fields['requester_sunet_sid'];
-                        $piSunetSid = $fields['pi_sunet_sid'];
-                        $primaryContactSunetSid = $fields['sunet_sid'];
-
                         // Determine username
                         $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
-                        $piUsername = $this->determineREDCapUsername($fields['pi_sunet_sid'], $fields['pi_email']);
-                        $primaryContactUsername = $this->determineREDCapUsername($fields['sunet_sid'], $fields['email']);
-
-                        $usernames = [$requesterUsername, $piUsername, $primaryContactUsername];
-
-                        foreach ($usernames as $username) {
-                            if (!empty($username)) {
-                                $this->saveUser($username, $fields['record_id']);
-                            } else {
-                                $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
-                            }
+                        if (!empty($requesterUsername)) {
+                            $this->saveUser($requesterUsername, $fields['record_id']);
+                        } else {
+                            $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
                         }
 
                     } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered
-
-                        // Have to accomplish two objectives here:
-                        // 1. remove users who have been unchecked from the survey
-                        // 2. create new entries for users
-                        $users = [];
-                        for ($i = 1; $i <= 3; $i++) {
-                            $username = $fields["op_sunet_sid_$i"];
-                            $first = $fields["op_fname_$i"];
-                            $last = $fields["op_lname_$i"];
-                            $email = $fields["op_email_$i"];
-                            $users[] = $this->determineREDCapUsername($username, $email);
-                        }
-
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
+
+                        // Add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
                         //TODO Iterate through all linked children and overwrite with new parent data
                     }
@@ -266,7 +242,6 @@ class IntakeDashboard extends AbstractExternalModule
             "return_format" => "json",
             "project_id" => $projectId,
             "records" => $recordId,
-            "fields" => ['op_sunet_sid_1', 'op_sunet_sid_2', 'op_sunet_sid_3', 'op_email_1', 'op_email_2', 'op_email_3', 'pi_sunet_sid', 'sunet_sid']
         ];
 
         // This parent data has already been saved, let it be source of truth
@@ -274,11 +249,11 @@ class IntakeDashboard extends AbstractExternalModule
         $parentData = reset($parentData);
 
         $savedUsers = array_filter([
-                $parentData['sunet_sid'] ?? null => 'sunet_sid',
-                $parentData['pi_sunet_sid'] ?? null => 'pi_sunet_sid',
-                $parentData['op_sunet_sid_1'] ?? null => 'op_sunet_sid_1',
-                $parentData['op_sunet_sid_2'] ?? null => 'op_sunet_sid_2',
-                $parentData['op_sunet_sid_3'] ?? null => 'op_sunet_sid_3',
+                $this->determineREDCapUsername($parentData['sunet_sid'], $parentData['email']) ?? null => 'sunet_sid',
+                $this->determineREDCapUsername($parentData['pi_sunet_sid'], $parentData['pi_email']) ?? null => 'pi_sunet_sid',
+                $this->determineREDCapUsername($parentData["op_sunet_sid_1"], $parentData["op_email_1"]) ?? null => 'op_sunet_sid_1',
+                $this->determineREDCapUsername($parentData["op_sunet_sid_2"], $parentData["op_email_2"]) ?? null => 'op_sunet_sid_2',
+                $this->determineREDCapUsername($parentData["op_sunet_sid_3"], $parentData["op_email_3"]) ?? null => 'op_sunet_sid_3',
         ], function ($key) {
             return !empty($key);
         }, ARRAY_FILTER_USE_KEY);
@@ -291,18 +266,21 @@ class IntakeDashboard extends AbstractExternalModule
 
         //Get all users that exist within the permission schema for the dashboard
         $fullUserData = json_decode(REDCap::getData($userParams), true);
-        // Goal : check if user already has access, if removed, remove permissions, if not add permissions.
-
         $deletions = [];
-        // Deletion first
+        $instance_count = [];
+        // Goal : check if user already has access, if removed, remove permissions, if not add permissions.
         // Iterate through each instance of user_info
         foreach($fullUserData as $entry) {
+            if(array_key_exists($entry['record_id'],$instance_count))
+                $instance_count[$entry['record_id']] += 1;
+            else
+                $instance_count[$entry['record_id']] = 1;
+
             if($entry['intake_id'] === $recordId) { // We have encountered a user that has access to this intake on dashboard
                 $username = $entry['record_id'];
                 if(!array_key_exists($username, $savedUsers)) { // saved users are only usernames that should have access.
                     //username does not exist as an entry in fullUserData (source of truth), remove
                     $deletions[] = $entry;
-//                    $this->saveUser($username, $recordId);
                 } else { // User exists in fullUserData & saved users
                     //remove username from the list of users we have to check for later removal
                     unset($savedUsers[$username]);
@@ -313,10 +291,12 @@ class IntakeDashboard extends AbstractExternalModule
 
         //Delete users, this will allow users to delete themselves
         foreach($deletions as $userEntry) {
-            //$res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, null, null, null);
-            $res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, $childEventName, $userEntry['redcap_repeat_instrument'], $userEntry['redcap_repeat_instance']);
-
-            $a = 1;
+            //If users only have one repeating instance, delete the entire record
+            if(array_key_exists($userEntry['record_id'], $instance_count) && $instance_count[$userEntry['record_id']] === 1) {
+                $res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, null, null, null);
+            } else { // Otherwise delete the specific instance
+                $res = REDCap::deleteRecord($projectId, $userEntry['record_id'], null, $childEventName, $userEntry['redcap_repeat_instrument'], $userEntry['redcap_repeat_instance']);
+            }
         }
 
         // SavedUsers now only has individuals who should be added
