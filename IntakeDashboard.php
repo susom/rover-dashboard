@@ -179,8 +179,17 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
 
-                        // Add new users / delete old users
+                        // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
+                        foreach($pSettings['project-id'] as $childProjectId) {
+                            $settings = $pSettings;
+                            $settings['parentId'] = $parent_id;
+                            $child = new Child($this, $childProjectId, $settings);
+                            $child->updateParentData($record);
+                        }
+
+
+
                         //TODO Iterate through all linked children and overwrite with new parent data
                     }
                 }
@@ -249,6 +258,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         $parentData = reset($parentData);
 
         $savedUsers = array_filter([
+                $this->determineREDCapUsername($parentData['requester_sunet_sid'], $parentData['requester_email']) ?? null => 'requester_sunet_sid',
                 $this->determineREDCapUsername($parentData['sunet_sid'], $parentData['email']) ?? null => 'sunet_sid',
                 $this->determineREDCapUsername($parentData['pi_sunet_sid'], $parentData['pi_email']) ?? null => 'pi_sunet_sid',
                 $this->determineREDCapUsername($parentData["op_sunet_sid_1"], $parentData["op_email_1"]) ?? null => 'op_sunet_sid_1',
@@ -558,7 +568,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         $params = [
             "return_format" => "json",
             "project_id" => $pid,
-            "records" => $universalId
+            "filterLogic" => "[universal_id] = $universalId"
         ];
 
         $response = json_decode(REDCap::getData($params), true);
@@ -732,15 +742,15 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $childEventId = $this->getChildEventId($project, $childInstrument);
 
             $check = $this->checkChildDataExists($universalId, $childProjectId);
-            if (empty($check)) {
-                $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
-                $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
-            } else {
-                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
-            }
+//            if (empty($check)) {
+            $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
+            $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
+//            } else {
+//                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
+//            }
 
-            $item['complete'] = $check[$childInstrument . '_complete'];
-            $item['child_pid'] = $childProjectId;
+//            $item['complete'] = $check[$childInstrument . '_complete'];
+//            $item['child_pid'] = $childProjectId;
             $item['form_name'] = reset($project->surveys)['form_name'];
             $item['title'] = reset($project->surveys)['title'];
             $surveyLinks[] = $item;
