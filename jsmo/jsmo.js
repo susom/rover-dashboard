@@ -15,10 +15,11 @@
                 try {
                     parsed = JSON.parse(res);
                 } catch (err) {
-                    console.error("Failed to parse JSON: ", err);
+                    console.error("Failed to parse JSON in JSMO: ", err);
                     errCallback({ success: false, error: "Invalid JSON" });
                     return;
                 }
+
                 if (parsed.success) {
                     callback(parsed);
                 } else {
