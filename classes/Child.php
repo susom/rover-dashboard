@@ -7,11 +7,13 @@ class Child {
     private $module;
     private $parentSettings;
     private $childProjectId;
+    private $parentProjectId;
 
-    public function __construct($module, $projectId, $settings)
+    public function __construct($module, $childPid, $parentPid, $settings)
     {
         $this->setModule($module);
-        $this->setChildProjectId($projectId);
+        $this->setChildProjectId($childPid);
+        $this->setParentProjectId($parentPid);
         $this->setParentSettings($settings);
     }
 
@@ -21,25 +23,10 @@ class Child {
     public function saveParentData($recordId)
     {
         $childId = $this->getChildProjectId();
-        $pSettings = $this->getParentSettings();
-        $queryParams = [
-            "return_format" => "json",
-            "project_id" => $pSettings['parentId'],
-            "records" => $recordId
-        ];
-
-        $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
-        $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
-        $childKeys = array_fill_keys($currentChildFields, 1);
-
-        $parentData = json_decode(REDCap::getData($queryParams), true);
-        $parentData = reset($parentData);
-        foreach($parentData as $field => $val){
-            if(!isset($childKeys[$field])){
-                unset($parentData[$field]);
-            }
-        }
+        $parentData = $this->prepareChildRecord($recordId);
+        $parentData['universal_id'] = $parentData['record_id'];
         $parentData['record_id'] = $recordId;
+
         $res = REDCap::saveData($childId, 'json', json_encode([$parentData]), 'overwrite');
 
         if (!empty($res['errors'])) {
@@ -55,20 +42,20 @@ class Child {
 
     }
 
-
-    /** Function that is triggered upon mutable survey being updated
-     *  Copies New Universal intake data to the child project records that are linked
-     * @param $recordId String record_id of completed parent survey (universal id)
-     * */
-    public function updateParentData($recordId){
-        $childId = $this->getChildProjectId();
+    /**
+     * Creates payload of variables for saving to children records based on parent data
+     * @param $universalId
+     * @return false|mixed
+     */
+    public function prepareChildRecord($universalId){
         $pSettings = $this->getParentSettings();
         $queryParams = [
             "return_format" => "json",
-            "project_id" => $pSettings['parentId'],
-            "records" => $recordId
+            "project_id" => $this->getParentProjectId(),
+            "records" => $universalId
         ];
 
+        // Grab all field names for first two reuired surveys
         $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
         $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
         $childKeys = array_fill_keys($currentChildFields, 1);
@@ -81,13 +68,22 @@ class Child {
                 unset($parentData[$field]);
             }
         }
+        return $parentData;
+    }
 
+    /** Function that is triggered upon mutable survey being updated
+     *  Copies New Universal intake data to the child project records that are linked
+     * @param $recordId String record_id of completed parent survey (universal id)
+     * */
+    public function updateParentData($recordId){
+        $childId = $this->getChildProjectId();
         $foundChildRecords = $this->childRecordExists($recordId);
 
         if (!is_null($foundChildRecords)) {
-            // Child records exist, update all of them rather than creating a new record
+            // Child records exist, update all of them
+            $parentData = $this->prepareChildRecord($recordId);
             foreach ($foundChildRecords as $record) {
-                $parentData['record_id'] = $record['record_id'];
+                $parentData['record_id'] = $record['record_id']; //Replace record id of parent data with found child for copying
                 $res = REDCap::saveData($childId, 'json', json_encode([$parentData]), 'overwrite');
 
                 if (!empty($res['errors'])) {
@@ -100,25 +96,6 @@ class Child {
                         "Failed to save data from parent to child. Parent Record ID: $recordId, Child PID: $childId. Likely field mismatch."
                     );
                 }
-            }
-        } else {
-            // No linked child record found, create a new record
-            $parentData['universal_id'] = $parentData['record_id'];
-
-            // Reserve a new record ID for the child
-            $reservedRecordId = REDCap::reserveNewRecordId($childId);
-            $parentData['record_id'] = $reservedRecordId;
-
-            $res = REDCap::saveData($childId, 'json', json_encode([$parentData]), 'overwrite');
-
-            if (!empty($res['errors'])) {
-                $errorString = $res['errors'];
-                $this->getModule()->emError(
-                    "Failed to save data from parent to child. Parent Record ID: $recordId, Child PID: $childId. Reason: $errorString"
-                );
-                REDCap::logEvent(
-                    "Failed to save data from parent to child. Parent Record ID: $recordId, Child PID: $childId. Likely field mismatch."
-                );
             }
         }
     }
@@ -137,6 +114,18 @@ class Child {
             return $parentData;
         else
             return null;
+    }
+
+    public function getSurveyTitle(): array
+    {
+        return array_map(function ($id) {
+            $project = new \Project($id);
+            $survey = reset($project->surveys);
+            return [
+                'form_name' => $survey['form_name'],
+                'title' => $survey['title']
+            ];
+        }, [$this->getChildProjectId()]);
     }
 
     public function getModule()
@@ -179,5 +168,18 @@ class Child {
     public function setChildProjectId($projectId): void
     {
         $this->childProjectId = $projectId;
+    }
+
+    public function setParentProjectId($parentPid)
+    {
+        $this->parentProjectId = $parentPid;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getParentProjectId()
+    {
+        return $this->parentProjectId;
     }
 }

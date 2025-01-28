@@ -108,16 +108,19 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     public function redcap_module_ajax($action, $payload, $project_id, $record, $instrument, $event_id, $repeat_instance,
                                        $survey_hash, $response_id, $survey_queue_hash, $page, $page_full, $user_id, $group_id)
     {
+        try{
+            $sanitized = $this->sanitizeInput($payload);
+            return match ($action) {
+                'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
+                'getUserDetail' => $this->getUserDetail($payload),
+                'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
+                'toggleProjectActivation' => $this->toggleProjectActivation($payload),
+                default => throw new Exception ("Action $action is not defined"),
+            };
+        } catch (\Exception $e ) {
+            $this->handleGlobalError($e);
+        }
 
-        $sanitized = $this->sanitizeInput($payload);
-
-        return match ($action) {
-            'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
-            'getUserDetail' => $this->getUserDetail($payload),
-            'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
-            'toggleProjectActivation' => $this->toggleProjectActivation($payload),
-            default => throw new Exception ("Action $action is not defined"),
-        };
     }
 
     /**
@@ -158,9 +161,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             if(!empty($completedIntake)){
                 // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
-                    $settings = $pSettings;
-                    $settings['parentId'] = $parent_id;
-                    $child = new Child($this, $project_id, $settings);
+                    $child = new Child($this, $project_id, $parent_id, $pSettings);
                     $child->saveParentData($record);
                 } else {
                     $fields = reset($completedIntake);
@@ -182,9 +183,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
                         foreach($pSettings['project-id'] as $childProjectId) {
-                            $settings = $pSettings;
-                            $settings['parentId'] = $parent_id;
-                            $child = new Child($this, $childProjectId, $settings);
+                            $child = new Child($this, $childProjectId, $parent_id, $pSettings);
                             $child->updateParentData($record);
                         }
 
@@ -435,7 +434,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         try {
             $username = $_SESSION['username'] ?? null;
 
-            if (!$username) {
+            if (is_null($username)) {
                 throw new \Exception('No username for current session found, please refresh');
             }
 
@@ -642,7 +641,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
 
             return json_encode([
-                "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
+//                "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
+                "surveys" => $this->generateSurveyTitles($payload['uid'], $requiredChildPIDs),
                 "completed_form_immutable" => $completedIntake,
                 "completed_form_mutable" => $mutableIntake,
                 "completed_form_pretty" => $pretty,
@@ -723,6 +723,20 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     private function isValidServiceKey($key, $value)
     {
         return preg_match('/^serv_map_\d+$/', $key) && $value === "1";
+    }
+
+    //Creates the project-specific survey titles for a given array of Child PIDs
+    private function generateSurveyTitles($universalId, $requiredChildPIDs): array
+    {
+        $parent_id = $this->getSystemSetting('parent-project');
+        $pSettings = $this->getProjectSettings($parent_id);
+        $titles = [];
+        foreach($requiredChildPIDs as $childProjectId) {
+            $child = new Child($this, $childProjectId, $parent_id, $pSettings);
+            $titles = array_merge($titles, $child->getSurveyTitle());
+        }
+
+        return $titles;
     }
 
     /**
