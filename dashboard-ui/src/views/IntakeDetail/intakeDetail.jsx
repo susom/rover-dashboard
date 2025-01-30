@@ -46,7 +46,7 @@ export function IntakeDetail() {
 
     const successCallback = (res) => {
         console.log('success', res)
-        setData(res?.surveys)
+        setData(res?.surveys || [])
         setDetail(res?.completed_form_immutable)
         setDetailMutable(res?.completed_form_mutable)
         setPretty(res?.completed_form_pretty)
@@ -175,7 +175,7 @@ export function IntakeDetail() {
 
     const renderContent = () => {
         let act = data.find((tab) => tab?.title === activeTab)
-        if(act && act?.complete === "2") { //render completed links for editing
+        // if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
                     {/*<Badge m="sm" color="green">Complete</Badge>*/}
@@ -206,38 +206,35 @@ export function IntakeDetail() {
                     {/*</Box>*/}
                 </>
             )
-        } else { // user has never submitted before
-            return (
-                <>
-                    <Badge m="sm" color="blue">Incomplete</Badge>
-                    <Blockquote
-                        color="blue"
-                        mb="md"
-                        radius="md"
-                    >Please complete the following survey
-                    </Blockquote>
-                    {/*<Group spacing="xs" align="center" mt="xs">*/}
-                    {/*    <Text fw={500}>{act.title}</Text>*/}
-                    {/*    <Badge color="yellow">Incomplete</Badge>*/}
-                    {/*</Group>*/}
-                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <Button
-                            size="md"
-                            color="blue"
-                            component="a"
-                            href={data.find((tab) => tab?.title === activeTab)?.url}
-                            rightSection={<IconExternalLink size={20} />}
-                        >
-                            Complete Survey
-                        </Button>
-                    </Box>
-                </>
-            )
-        }
+        // }
+        // else { // user has never submitted before
+        //     return (
+        //         <>
+        //             <Badge m="sm" color="blue">Incomplete</Badge>
+        //             <Blockquote
+        //                 color="blue"
+        //                 mb="md"
+        //                 radius="md"
+        //             >Please complete the following survey
+        //             </Blockquote>
+        //             <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+        //                 <Button
+        //                     size="md"
+        //                     color="blue"
+        //                     component="a"
+        //                     href={data.find((tab) => tab?.title === activeTab)?.url}
+        //                     rightSection={<IconExternalLink size={20} />}
+        //                 >
+        //                     Complete Survey
+        //                 </Button>
+        //             </Box>
+        //         </>
+        //     )
+        // }
     }
 
     const renderChildSurveys = () => {
-        if(data.length) {
+        // if(data.length) {
             return (
                 <Grid style={{ height: "100%" }} gutter="md">
                     {/* Tabs */}
@@ -273,25 +270,25 @@ export function IntakeDetail() {
                     </Grid.Col>
                 </Grid>
             )
-        } else {
-            return (
-                <Grid style={{ height: "100%" }} gutter="md">
-                    <Grid.Col span={12}>
-                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
-                            <Card.Section
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                <Badge color="gray" size="lg">No Services requested!</Badge>
-                            </Card.Section>
-                        </Card>
-                    </Grid.Col>
-                </Grid>
-            )
-        }
+        // } else {
+        //     return (
+        //         <Grid style={{ height: "100%" }} gutter="md">
+        //             <Grid.Col span={12}>
+        //                 <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+        //                     <Card.Section
+        //                         style={{
+        //                             display: "flex",
+        //                             alignItems: "center",
+        //                             justifyContent: "center",
+        //                         }}
+        //                     >
+        //                         <Badge color="gray" size="lg">No Services requested!</Badge>
+        //                     </Card.Section>
+        //                 </Card>
+        //             </Grid.Col>
+        //         </Grid>
+        //     )
+        // }
 
     }
 
@@ -336,10 +333,10 @@ export function IntakeDetail() {
                     {detail?.intake_active === "0" &&
                         <>
                             <Group spacing="xs" align="center" mt="xs">
-                                <Text>Intake Inactive</Text>
+                                <Text fw={700}>Intake Inactive</Text>
                             </Group>
                             <Group spacing="xs" align="center" mt="xs">
-                                <Text size="sm" c="dimmed">Intake deactivated by</Text>
+                                <Text size="sm" c="dimmed">Intake deactivated by user:</Text>
                                 <Text size="sm" fw={700}>{detail?.deactivation_user}</Text>
                             </Group>
                         </>
