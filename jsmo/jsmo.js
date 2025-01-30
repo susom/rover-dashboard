@@ -45,6 +45,9 @@
         toggleProjectActivation(payload, callback, errCallback) {
             handleAjaxResponse(module.ajax('toggleProjectActivation', payload), callback, errCallback);
         },
+        newChildRequest(payload, callback, errCallback) {
+            handleAjaxResponse(module.ajax('newChildRequest', payload), callback, errCallback);
+        },
     });
 
     // Object.assign(module, {

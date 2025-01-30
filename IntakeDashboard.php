@@ -115,6 +115,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 'getUserDetail' => $this->getUserDetail($payload),
                 'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
                 'toggleProjectActivation' => $this->toggleProjectActivation($payload),
+                'newChildRequest' => $this->newChildRequest($payload),
                 default => throw new Exception ("Action $action is not defined"),
             };
         } catch (\Exception $e ) {
@@ -737,6 +738,22 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         }
 
         return $titles;
+    }
+
+    private function newChildRequest($payload){
+        try {
+            if(empty($payload['child_id']))
+                throw new \Exception("Missing child ID");
+
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+
+            $child = new Child($this, $payload['child_id'], $parent_id, $pSettings);
+            $child->getNewSurveyUrl();
+            return json_encode(["data" => [], "success" => true]);
+        } catch (\Exception $e) {
+            $this->handleGlobalError($e);
+        }
     }
 
     /**

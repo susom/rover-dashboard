@@ -39,7 +39,8 @@
         "fetchIntakeParticipation",
         "getUserDetail",
         "fetchRequiredSurveys",
-        "toggleProjectActivation"
+        "toggleProjectActivation",
+        "newChildRequest"
     ],
     "project-settings": [
         {
@@ -107,7 +108,7 @@
                 "field": "is_child_project",
                 "value": "0"
             },
-            "sub_settings":[
+            "sub_settings": [
                 {
                     "key": "project-id",
                     "name": "<b>Project</b>",
@@ -115,13 +116,11 @@
                     "required": true
                 },
                 {
-                    "key": "mapping-field",
-                    "name": "<b>Universal intake mapping field</b>",
-                    "type": "field-list",
+                    "key": "form-list",
+                    "name": "<b>Field list</b>",
+                    "type": "form-list",
                     "required": true
                 }
-
-
             ]
         }
 
