@@ -40,7 +40,8 @@
         "getUserDetail",
         "fetchRequiredSurveys",
         "toggleProjectActivation",
-        "newChildRequest"
+        "newChildRequest",
+        "getChildSubmissions"
     ],
     "project-settings": [
         {

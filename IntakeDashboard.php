@@ -116,6 +116,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
                 'toggleProjectActivation' => $this->toggleProjectActivation($payload),
                 'newChildRequest' => $this->newChildRequest($payload),
+                'getChildSubmissions' => $this->getChildSubmissions($payload),
                 default => throw new Exception ("Action $action is not defined"),
             };
         } catch (\Exception $e ) {
@@ -159,11 +160,14 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             ];
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
+            $completedIntake = reset($completedIntake);
             if(!empty($completedIntake)){
                 // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
                     $child = new Child($this, $project_id, $parent_id, $pSettings);
-                    $child->saveParentData($record);
+                    $child->saveParentData($completedIntake['universal_id'], $record);
+//                    $child->saveParentData($record);
+
                 } else {
                     $fields = reset($completedIntake);
 
@@ -524,7 +528,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 throw new \Exception("Either username or UID is empty");
             }
 
-
             $username = $payload['username'];
             $uid = $payload['uid'];
             $parentId = $this->getSystemSetting('parent-project');
@@ -676,19 +679,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             "fields" => $fields,
             "events" => $event
         ];
+
         return json_decode(REDCap::getData($detailsParams), true);
-//        $data = reset($data);
-//        foreach($data as $field => $val) {
-//            foreach($formFields as $full){
-//                if($field === $full['field_name']){
-//                    $data[$full['field_name']] = $val;
-//                    unset($data[$field]);
-//                }
-//            }
-//
-//        }
-//        return $data;
-//        return json_decode(REDCap::getData($detailsParams2), true);
     }
 
     /**
@@ -742,15 +734,30 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
     private function newChildRequest($payload){
         try {
-            if(empty($payload['child_id']))
-                throw new \Exception("Missing child ID");
+            if(empty($payload['child_id']) || empty($payload['universal_id']))
+                throw new \Exception("Missing child ID or Universal ID");
 
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
 
             $child = new Child($this, $payload['child_id'], $parent_id, $pSettings);
-            $child->getNewSurveyUrl();
-            return json_encode(["data" => [], "success" => true]);
+            $url = $child->getNewSurveyUrl($payload['universal_id']);
+            return json_encode(["url" => $url, "success" => true]);
+        } catch (\Exception $e) {
+            $this->handleGlobalError($e);
+        }
+    }
+
+    private function getChildSubmissions($payload){
+        try {
+            if(empty($payload['child_id']) || empty($payload['universal_id']))
+                throw new \Exception("Missing child ID or Universal ID");
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+
+            $child = new Child($this, $payload['child_id'], $parent_id, $pSettings);
+            $submissions = $child->childRecordExists($payload['universal_id']);
+            return json_encode(["data" => $submissions, "success" => true]);
         } catch (\Exception $e) {
             $this->handleGlobalError($e);
         }

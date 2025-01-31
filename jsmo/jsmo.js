@@ -48,6 +48,9 @@
         newChildRequest(payload, callback, errCallback) {
             handleAjaxResponse(module.ajax('newChildRequest', payload), callback, errCallback);
         },
+        getChildSubmissions(payload, callback, errCallback){
+            handleAjaxResponse(module.ajax('getChildSubmissions', payload), callback, errCallback);
+        }
     });
 
     // Object.assign(module, {

@@ -10,9 +10,28 @@ import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
 import {Box, Button} from "@mantine/core";
 import {IconExternalLink, IconPlus} from "@tabler/icons-react";
 
+
+
 export function ChildContent({childInfo, parentInfo}) {
+    let jsmoModule;
+    const [submissions, setSubmissions] = useState([])
+
+    if (import.meta?.env?.MODE !== 'development')
+        jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+
+    useEffect(() => {
+        console.log('attempting to fetch child submissions...')
+        jsmoModule.getChildSubmissions(
+            {'child_id': childInfo?.child_id, 'universal_id': parentInfo?.record_id},
+            (res) => setSubmissions(res?.data || []),
+            (err) => console.log(err)
+        )
+    }, [])
+
     const successCallback = (res) => {
-        console.log(res)
+        if(res?.url){
+            window.open(res.url, "_self") //redirect to survey
+        }
     }
 
     const errorCallback = (err) => {
@@ -21,14 +40,10 @@ export function ChildContent({childInfo, parentInfo}) {
 
     const onClick = (e) => {
         console.log(e.currentTarget.id)
-        let jsmoModule;
-        if (import.meta?.env?.MODE !== 'development')
-            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
-
-        jsmoModule.newChildRequest({'child_id': e.currentTarget.id}, successCallback, errorCallback)
+        jsmoModule.newChildRequest({'child_id': e.currentTarget.id, 'universal_id': parentInfo?.record_id}, successCallback, errorCallback)
     }
 
-
+    console.log(parentInfo)
     const renderEditButton = () => {
         return (
             <Button
@@ -43,6 +58,19 @@ export function ChildContent({childInfo, parentInfo}) {
         )
     }
 
+    const filterStatuses = (num) => {
+        if(num === "0")
+            return "Incomplete"
+        else if(num === "2")
+            return "Complete"
+    }
+
+    let body = submissions.map(e => [
+        e.record_id,
+        filterStatuses(e.ids_survey_demo_complete),
+        renderEditButton()]
+    )
+
     return (
         <div>
             <Button
@@ -54,8 +82,8 @@ export function ChildContent({childInfo, parentInfo}) {
             >New Request</Button>
             <RequestTable
                 caption="Test Table 1"
-                columns={['Child ID', 'Submission Date', 'Survey']}
-                body={[['Data 1', 'Data 2', renderEditButton()], ['Data 3', 'Data 4', renderEditButton()]]}
+                columns={['Child ID', 'Status', 'Survey']}
+                body={body}
             />
         </div>
 
