@@ -131,8 +131,8 @@ export function Dashboard() {
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
-            item?.research_title,
-            item?.pi_name,
+            item?.research_title ? item.research_title : "Not Provided",
+            item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id),
             renderMenu(item),
         ]) || [],
@@ -143,8 +143,8 @@ export function Dashboard() {
         body: pagesInactive[inactivePage - 1]?.map(item => [
             item?.intake_id,
             item?.active_change_date,
-            item?.research_title,
-            item?.pi_name,
+            item?.research_title ? item.research_title : "Not Provided",
+            item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id)
         ]) || [],
     };
