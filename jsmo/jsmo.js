@@ -15,10 +15,11 @@
                 try {
                     parsed = JSON.parse(res);
                 } catch (err) {
-                    console.error("Failed to parse JSON: ", err);
+                    console.error("Failed to parse JSON in JSMO: ", err);
                     errCallback({ success: false, error: "Invalid JSON" });
                     return;
                 }
+
                 if (parsed.success) {
                     callback(parsed);
                 } else {
@@ -44,6 +45,12 @@
         toggleProjectActivation(payload, callback, errCallback) {
             handleAjaxResponse(module.ajax('toggleProjectActivation', payload), callback, errCallback);
         },
+        newChildRequest(payload, callback, errCallback) {
+            handleAjaxResponse(module.ajax('newChildRequest', payload), callback, errCallback);
+        },
+        getChildSubmissions(payload, callback, errCallback){
+            handleAjaxResponse(module.ajax('getChildSubmissions', payload), callback, errCallback);
+        }
     });
 
     // Object.assign(module, {

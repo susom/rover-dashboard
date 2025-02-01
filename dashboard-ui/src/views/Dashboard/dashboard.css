@@ -8,20 +8,26 @@
 
 thead th:first-child {
     width: 75px;
+    padding-left: 15px !important;
+}
+
+tbody td:first-child {
+    padding-left: 15px !important;
 }
 
 thead th:nth-child(2) {
-    width: 75px;
+    width: 150px;
 }
 
 thead th:nth-child(3) {
-    width: 200px;
+    width: 500px;
 }
 
 thead th:nth-child(4) {
-    width: 500px;
+    width: 250px;
 }
 
 #inactive-table .mantine-Card-section {
     color: red;
 }
+

@@ -1,5 +1,7 @@
 <?php
+
 namespace Stanford\IntakeDashboard;
+
 /** @var IntakeDashboard $this */
 
 

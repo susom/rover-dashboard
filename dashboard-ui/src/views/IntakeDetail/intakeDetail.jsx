@@ -22,8 +22,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { IconBook, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
-
 import {useNavigate, useParams} from "react-router-dom";
+import {ChildContent} from "../ChildContent/childContent.jsx";
 
 export function IntakeDetail() {
     const [overallStep, setOverallStep] = useState(1);
@@ -32,6 +32,7 @@ export function IntakeDetail() {
     const [activeTab, setActiveTab] = useState(""); // Track active tab
     const [data, setData] = useState([]); // Stubbed dynamic data
     const [detail, setDetail] = useState("");
+    const [detailMutable, setDetailMutable] = useState("")
     const [mutableUrl, setmutableUrl] = useState("")
     const params = useParams()
     const navigate = useNavigate();
@@ -45,8 +46,9 @@ export function IntakeDetail() {
 
     const successCallback = (res) => {
         console.log('success', res)
-        setData(res?.surveys)
-        setDetail(res?.completed_form_detail)
+        setData(res?.surveys || [])
+        setDetail(res?.completed_form_immutable)
+        setDetailMutable(res?.completed_form_mutable)
         setPretty(res?.completed_form_pretty)
         setmutableUrl(res?.mutable_url)
 
@@ -64,7 +66,6 @@ export function IntakeDetail() {
 
     // Stubbed dynamic data
     useEffect(() => {
-        console.warn("Using stubbed data for UI testing");
 
         let jsmoModule;
         if (import.meta?.env?.MODE !== 'development')
@@ -174,65 +175,29 @@ export function IntakeDetail() {
 
     const renderContent = () => {
         let act = data.find((tab) => tab?.title === activeTab)
-        if(act && act?.complete === "2") { //render completed links for editing
+        console.log(act)
+        // if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
-                    <Badge m="sm" color="green">Complete</Badge>
-                    <Blockquote
-                        color="green"
-                        mb="md"
-                        radius="md"
-                    >Thank you for completing the survey, click the following link to edit your previous submission
-                    </Blockquote>
-                    {/*<Group spacing="xs" align="center" mt="xs">*/}
-                    {/*    <Badge color="green">Complete</Badge>*/}
-                    {/*    <Text fw={500}>{act?.title}</Text>*/}
-                    {/*</Group>*/}
-                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <Button
-                            size="md"
-                            color="green"
-                            component="a"
-                            href={data.find((tab) => tab?.title === activeTab)?.url}
-                            rightSection={<IconExternalLink size={20} />}
-                        >
-                            Edit Survey
-                        </Button>
-                    </Box>
+                    {/*<Badge m="sm" color="green">Complete</Badge>*/}
+                    {/*<Blockquote*/}
+                    {/*    color="green"*/}
+                    {/*    mb="md"*/}
+                    {/*    radius="md"*/}
+                    {/*>Thank you for completing the survey, click the following link to edit your previous submission*/}
+                    {/*</Blockquote>*/}
+                    <ChildContent
+                        immutableParentInfo={detail}
+                        mutableParentInfo={detailMutable}
+                        childInfo={act}
+                    />
+
                 </>
             )
-        } else { // user has never submitted before
-            return (
-                <>
-                    <Badge m="sm" color="blue">Incomplete</Badge>
-                    <Blockquote
-                        color="blue"
-                        mb="md"
-                        radius="md"
-                    >Please complete the following survey
-                    </Blockquote>
-                    {/*<Group spacing="xs" align="center" mt="xs">*/}
-                    {/*    <Text fw={500}>{act.title}</Text>*/}
-                    {/*    <Badge color="yellow">Incomplete</Badge>*/}
-                    {/*</Group>*/}
-                    <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <Button
-                            size="md"
-                            color="blue"
-                            component="a"
-                            href={data.find((tab) => tab?.title === activeTab)?.url}
-                            rightSection={<IconExternalLink size={20} />}
-                        >
-                            Complete Survey
-                        </Button>
-                    </Box>
-                </>
-            )
-        }
     }
 
     const renderChildSurveys = () => {
-        if(data.length) {
+        // if(data.length) {
             return (
                 <Grid style={{ height: "100%" }} gutter="md">
                     {/* Tabs */}
@@ -268,25 +233,25 @@ export function IntakeDetail() {
                     </Grid.Col>
                 </Grid>
             )
-        } else {
-            return (
-                <Grid style={{ height: "100%" }} gutter="md">
-                    <Grid.Col span={12}>
-                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
-                            <Card.Section
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                <Badge color="gray" size="lg">No Services requested!</Badge>
-                            </Card.Section>
-                        </Card>
-                    </Grid.Col>
-                </Grid>
-            )
-        }
+        // } else {
+        //     return (
+        //         <Grid style={{ height: "100%" }} gutter="md">
+        //             <Grid.Col span={12}>
+        //                 <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+        //                     <Card.Section
+        //                         style={{
+        //                             display: "flex",
+        //                             alignItems: "center",
+        //                             justifyContent: "center",
+        //                         }}
+        //                     >
+        //                         <Badge color="gray" size="lg">No Services requested!</Badge>
+        //                     </Card.Section>
+        //                 </Card>
+        //             </Grid.Col>
+        //         </Grid>
+        //     )
+        // }
 
     }
 
@@ -322,16 +287,26 @@ export function IntakeDetail() {
 
                 {/* Project Info */}
                 <Blockquote
-                    color="blue"
+                    color={detail?.intake_active === "0" ? "red" : "blue"}
                     iconSize={36}
                     mt="lg"
                     radius="md"
                     icon={<IconInfoCircle />}
                 >
-
+                    {detail?.intake_active === "0" &&
+                        <>
+                            <Group spacing="xs" align="center" mt="xs">
+                                <Text fw={700}>Intake Inactive</Text>
+                            </Group>
+                            <Group spacing="xs" align="center" mt="xs">
+                                <Text size="sm" c="dimmed">Intake deactivated by user:</Text>
+                                <Text size="sm" fw={700}>{detail?.deactivation_user}</Text>
+                            </Group>
+                        </>
+                    }
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Project Name:</Text>
-                        <Text size="sm" fw={700}>{detail?.research_title}</Text>
+                        <Text size="sm" fw={700}>{detailMutable?.research_title}</Text>
                     </Group>
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Universal ID #:</Text>
@@ -339,7 +314,7 @@ export function IntakeDetail() {
                     </Group>
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Principal Investigator:</Text>
-                        <Text size="sm" fw={700}>{`${detail?.pi_f_name} ${detail?.pi_l_name}`}</Text>
+                        <Text size="sm" fw={700}>{`${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}`}</Text>
                     </Group>
 
                     {/*<List size="sm" spacing="xs">*/}
@@ -371,8 +346,19 @@ export function IntakeDetail() {
                         </Timeline.Item>
                         <Timeline.Item title="Universal Intake submission II">
                             <Group spacing="xs" align="center">
-                                <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                                <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
+                                {detailMutable?.complete !== "2" ?
+                                    <>
+                                        <Text c="red" fw={700} size="sm">Submission II Incomplete: </Text>
+                                        <Button color="red" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Complete</Button>
+                                    </> :
+                                    <>
+                                        <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
+                                        <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
+                                    </>
+
+                                }
+                                {/*<Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>*/}
+                                {/*<Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>*/}
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
