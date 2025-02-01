@@ -175,6 +175,7 @@ export function IntakeDetail() {
 
     const renderContent = () => {
         let act = data.find((tab) => tab?.title === activeTab)
+        console.log(act)
         // if(act && act?.complete === "2") { //render completed links for editing
             return (
                 <>
@@ -186,51 +187,13 @@ export function IntakeDetail() {
                     {/*>Thank you for completing the survey, click the following link to edit your previous submission*/}
                     {/*</Blockquote>*/}
                     <ChildContent
-                        parentInfo={detail}
+                        immutableParentInfo={detail}
+                        mutableParentInfo={detailMutable}
                         childInfo={act}
                     />
-                    {/*<Group spacing="xs" align="center" mt="xs">*/}
-                    {/*    <Badge color="green">Complete</Badge>*/}
-                    {/*    <Text fw={500}>{act?.title}</Text>*/}
-                    {/*</Group>*/}
-                    {/*<Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>*/}
-                    {/*    <Button*/}
-                    {/*        size="md"*/}
-                    {/*        color="green"*/}
-                    {/*        component="a"*/}
-                    {/*        href={data.find((tab) => tab?.title === activeTab)?.url}*/}
-                    {/*        rightSection={<IconExternalLink size={20} />}*/}
-                    {/*    >*/}
-                    {/*        Edit Survey*/}
-                    {/*    </Button>*/}
-                    {/*</Box>*/}
+
                 </>
             )
-        // }
-        // else { // user has never submitted before
-        //     return (
-        //         <>
-        //             <Badge m="sm" color="blue">Incomplete</Badge>
-        //             <Blockquote
-        //                 color="blue"
-        //                 mb="md"
-        //                 radius="md"
-        //             >Please complete the following survey
-        //             </Blockquote>
-        //             <Box mb="md" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-        //                 <Button
-        //                     size="md"
-        //                     color="blue"
-        //                     component="a"
-        //                     href={data.find((tab) => tab?.title === activeTab)?.url}
-        //                     rightSection={<IconExternalLink size={20} />}
-        //                 >
-        //                     Complete Survey
-        //                 </Button>
-        //             </Box>
-        //         </>
-        //     )
-        // }
     }
 
     const renderChildSurveys = () => {
@@ -383,8 +346,19 @@ export function IntakeDetail() {
                         </Timeline.Item>
                         <Timeline.Item title="Universal Intake submission II">
                             <Group spacing="xs" align="center">
-                                <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                                <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
+                                {detailMutable?.complete !== "2" ?
+                                    <>
+                                        <Text c="red" fw={700} size="sm">Submission II Incomplete: </Text>
+                                        <Button color="red" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Complete</Button>
+                                    </> :
+                                    <>
+                                        <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
+                                        <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
+                                    </>
+
+                                }
+                                {/*<Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>*/}
+                                {/*<Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>*/}
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
