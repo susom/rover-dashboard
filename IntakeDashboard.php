@@ -169,16 +169,23 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 //                    $child->saveParentData($record);
 
                 } else {
-                    $fields = reset($completedIntake);
 
                     // Universal immutable survey form has been saved for the first time (new intake)
                     if($instrument === $pSettings['universal-survey-form-immutable']) {
                         // Determine username
-                        $requesterUsername = $this->determineREDCapUsername($fields['requester_sunet_sid'], $fields['requester_email']);
+                        $requesterUsername = $this->determineREDCapUsername($completedIntake['requester_sunet_sid'], $completedIntake['requester_email']);
                         if (!empty($requesterUsername)) {
-                            $this->saveUser($requesterUsername, $fields['record_id']);
+                            $this->saveUser($requesterUsername, $completedIntake['record_id']);
                         } else {
-                            $this->emError("Usernames not found for Universal Survey: record $record project $parent_id");
+                            $submitted_sunet_sid = $completedIntake['requester_sunet_sid'];
+                            $submitted_email = $completedIntake['requester_email'];
+                            $this->emError("Username cannot be determined for Universal Survey: record $record project $parent_id");
+                            REDCap::logEvent(
+                                "Username cannot be determined on Intake submission",
+                                "Username : $submitted_sunet_sid \n Email: $submitted_email \n Dashboard access has not been granted, likely due to an incorrect email \n access will require manual entry",
+                                "",
+                                "$record"
+                            );
                         }
 
                     } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered
@@ -348,7 +355,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
      * @throws Exception
      * Saves a user in the hash table with reference to a universal intake submission
      */
-    public function saveUser($username, $recordId)
+    public function saveUser($username, $universalId)
     {
         $parent_id = $this->getSystemSetting('parent-project');
         $pSettings = $this->getProjectSettings($parent_id);
@@ -374,7 +381,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             [
                 "record_id" => $username,
                 "type" => "Secondary",
-                "intake_id" => $recordId,
+                "intake_id" => $universalId,
                 "redcap_event_name" => $event_name,
                 "redcap_repeat_instrument" => $form_name,
                 "redcap_repeat_instance" => $next_instance_id,
@@ -642,10 +649,16 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $completedIntake = reset($completedIntake);
             $mutableIntake = reset($mutableIntake);
 
+            //Manually add timestamp if completed
             $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
 
+            //Manually add agnostic completed variable if form changes for frontend logic
+            $completedIntake['complete'] = $completedIntake[$projectSettings['universal-survey-form-immutable'] . '_complete'];
+            unset($completedIntake[$projectSettings['universal-survey-form-immutable'] . '_completed']);
+            $mutableIntake['complete'] = $mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_complete'];
+            unset($mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_completed']);
+
             return json_encode([
-//                "surveys" => $this->generateSurveyLinks($payload['uid'], $requiredChildPIDs),
                 "surveys" => $this->generateSurveyTitles($payload['uid'], $requiredChildPIDs),
                 "completed_form_immutable" => $completedIntake,
                 "completed_form_mutable" => $mutableIntake,
@@ -671,6 +684,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
         foreach($formFields as $field)
             $fields[] = $field['field_name'];
+        $fields[] = $form . '_complete';
 
         $detailsParams = [
             "return_format" => "json",
@@ -756,7 +770,26 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $pSettings = $this->getProjectSettings($parent_id);
 
             $child = new Child($this, $payload['child_id'], $parent_id, $pSettings);
+
             $submissions = $child->childRecordExists($payload['universal_id']);
+            // Grab all field names for first two required surveys
+
+            $mainSurvey = $child->getMainSurveyFormName();
+
+            //Iterate over all submissions to determine if we need to render a return link
+            foreach($submissions as $in => $submission){
+                $completionVariable = $mainSurvey . "_complete";
+                if(isset($submission[$completionVariable]) && $submission[$completionVariable] !== "2"){
+                    $submissions[$in]['survey_url'] = $child->getSurveyLink($submission['record_id']);
+                }
+
+                // Grab timestamp for dashboard display
+                $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
+
+                // Set default field to make it easier to render completion status on dashboard (form name agnostic)
+                $submissions[$in]['child_survey_complete'] = $submission[$completionVariable];
+            }
+
             return json_encode(["data" => $submissions, "success" => true]);
         } catch (\Exception $e) {
             $this->handleGlobalError($e);
@@ -837,4 +870,5 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
         return array_key_first($response['ids']);
     }
+
 }
