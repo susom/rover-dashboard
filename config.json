@@ -115,12 +115,6 @@
                     "name": "<b>Project</b>",
                     "type": "project-id",
                     "required": true
-                },
-                {
-                    "key": "form-list",
-                    "name": "<b>Field list</b>",
-                    "type": "form-list",
-                    "required": true
                 }
             ]
         }
