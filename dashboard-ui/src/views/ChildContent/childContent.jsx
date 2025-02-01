@@ -1,5 +1,4 @@
 import React, {useState, useEffect, useCallback} from "react";
-// import {AppShell, Button, Group, Card, Image, Table, Text, Divider, Pagination, Title, Blockquote, List, Loader} from '@mantine/core';
 // import { useDisclosure } from '@mantine/hooks';
 // import {IconExternalLink, IconInfoCircle} from '@tabler/icons-react';
 // import {useNavigate} from "react-router-dom";
@@ -7,26 +6,35 @@ import React, {useState, useEffect, useCallback} from "react";
 // import { IconPlus } from '@tabler/icons-react';
 
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {Box, Button} from "@mantine/core";
+import {LoadingOverlay, Button, Tooltip} from "@mantine/core";
 import {IconExternalLink, IconPlus} from "@tabler/icons-react";
 
 
 
-export function ChildContent({childInfo, parentInfo}) {
+export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}) {
     let jsmoModule;
     const [submissions, setSubmissions] = useState([])
+    const [loading, setLoading] = useState(true)
 
     if (import.meta?.env?.MODE !== 'development')
         jsmoModule = ExternalModules.Stanford.IntakeDashboard;
 
     useEffect(() => {
-        console.log('attempting to fetch child submissions...')
+        setLoading(true)
+        setSubmissions([])
+
         jsmoModule.getChildSubmissions(
-            {'child_id': childInfo?.child_id, 'universal_id': parentInfo?.record_id},
-            (res) => setSubmissions(res?.data || []),
-            (err) => console.log(err)
+            {'child_id': childInfo?.child_id, 'universal_id': immutableParentInfo?.record_id},
+            (res) => {
+                setLoading(false)
+                setSubmissions(res?.data || [])
+            },
+            (err) => {
+                console.log(err)
+                setLoading(false)
+            }
         )
-    }, [])
+    }, [childInfo, immutableParentInfo])
 
     const successCallback = (res) => {
         if(res?.url){
@@ -39,23 +47,23 @@ export function ChildContent({childInfo, parentInfo}) {
     }
 
     const onClick = (e) => {
-        console.log(e.currentTarget.id)
-        jsmoModule.newChildRequest({'child_id': e.currentTarget.id, 'universal_id': parentInfo?.record_id}, successCallback, errorCallback)
+        jsmoModule.newChildRequest({'child_id': e.currentTarget.id, 'universal_id': immutableParentInfo?.record_id}, successCallback, errorCallback)
     }
 
-    console.log(parentInfo)
-    const renderEditButton = () => {
-        return (
-            <Button
-                size="xs"
-                color="green"
-                component="a"
-                href={childInfo?.url}
-                rightSection={<IconExternalLink size={20} />}
-            >
-                Edit
-            </Button>
-        )
+    const renderEditButton = (url) => {
+        if(url){
+            return (
+                <Button
+                    size="xs"
+                    color="green"
+                    component="a"
+                    href={url}
+                    rightSection={<IconExternalLink size={20} />}
+                >
+                    Edit
+                </Button>
+            )
+        }
     }
 
     const filterStatuses = (num) => {
@@ -67,22 +75,45 @@ export function ChildContent({childInfo, parentInfo}) {
 
     let body = submissions.map(e => [
         e.record_id,
-        filterStatuses(e.ids_survey_demo_complete),
-        renderEditButton()]
+        filterStatuses(e?.child_survey_complete),
+        e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
+        renderEditButton(e.survey_url)]
     )
+
+    const renderButton = () => {
+        if(mutableParentInfo?.complete !== "2") {
+            return (
+                <Tooltip label="Please complete universal survey II">
+                    <Button
+                        onClick={e => e.preventDefault()}
+                        rightSection={<IconPlus size={20} />}
+                        component="a"
+                        m="sm"
+                        data-disabled
+                        disabled
+                        id={childInfo?.child_id}
+                    >New Request</Button>
+                </Tooltip>
+            )
+        } else {
+            return (
+                <Button
+                    onClick={onClick}
+                    rightSection={<IconPlus size={20} />}
+                    component="a"
+                    m="sm"
+                    id={childInfo?.child_id}
+                >New Request</Button>
+            )
+        }
+    }
 
     return (
         <div>
-            <Button
-                onClick = {onClick}
-                rightSection={<IconPlus size={20} />}
-                component="a"
-                m="sm"
-                id={childInfo?.child_id}
-            >New Request</Button>
+            <LoadingOverlay visible={loading} loaderProps={{ children: 'Loading...' }} />
+            {renderButton()}
             <RequestTable
-                caption="Test Table 1"
-                columns={['Child ID', 'Status', 'Survey']}
+                columns={['Child ID', 'Status', 'Completion Timestamp', 'Survey Link']}
                 body={body}
             />
         </div>
