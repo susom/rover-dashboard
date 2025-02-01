@@ -1,6 +1,7 @@
 <?php
 namespace Stanford\IntakeDashboard;
 use REDCap;
+use Survey;
 use Project;
 
 class Child {
@@ -59,7 +60,7 @@ class Child {
             "records" => $universalId
         ];
 
-        // Grab all field names for first two reuired surveys
+        // Grab all field names for first two required surveys
         $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
         $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
         $childKeys = array_fill_keys($currentChildFields, 1);
@@ -104,7 +105,7 @@ class Child {
         }
     }
 
-    // Query child records to determine if record needs to be updated or created
+    // Query child project for any matching records given universal id
     public function childRecordExists($universalId, $additionalParams = []){
         $params = [
             "return_format" => "json",
@@ -137,6 +138,8 @@ class Child {
         }, [$this->getChildProjectId()]);
     }
 
+    // Generate a new survey url for a child record
+    // Called by New Request -> will auto-create records
     public function getNewSurveyUrl($universalId): string
     {
         $settings = $this->getParentSettings();
@@ -157,6 +160,7 @@ class Child {
         return $url;
     }
 
+    // Create new record in child project
     private function preCreateChildRecord($universalId)
     {
 
@@ -240,5 +244,42 @@ class Child {
     {
         $pro = new \Project($this->getChildProjectId());
         return $pro->table_pk;
+    }
+
+    //Given the specific record ID in a child project, generate a link to said record
+    public function getSurveyLink($childRecordId): ?string
+    {
+        $pro = new \Project($this->getChildProjectId());
+        $formName = $this->getMainSurveyFormName();
+        $eventId = $this->getChildEventId($formName);
+        return REDCap::getSurveyLink($childRecordId, $formName, $eventId, 1, $this->getChildProjectId());
+    }
+
+    //Returns the main survey form for a given child project - (First survey)
+    public function getMainSurveyFormName(){
+        $pro = new \Project($this->getChildProjectId());
+        $survey = reset($pro->surveys);
+        return !empty($survey['form_name']) ? $survey['form_name'] : null;
+    }
+
+    public function getChildEventId($formName){
+        $pro = new \Project($this->getChildProjectId());
+        foreach($pro->eventsForms as $eventId => $event) {
+            if(in_array($formName, $event))
+                return $eventId;
+        }
+        return null;
+    }
+
+    public function getSurveyTimestamp($childRecordId){
+        $pro = new \Project($this->getChildProjectId());
+        $formName = $this->getMainSurveyFormName();
+        $eventId = $this->getChildEventId($formName);
+
+        //Grab survey completion timestamp
+        $survey_id = $pro->forms[$formName]['survey_id'];
+        return Survey::isResponseCompleted($survey_id, $childRecordId, $eventId, 1, true);
+
+
     }
 }
