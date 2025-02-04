@@ -1,0 +1,26 @@
+.tmLabel {
+    font-weight: bold;
+    font-size: var(--mantine-font-size-md);
+    line-height: 1.3;
+    color: var(--mantine-color-bright);
+}
+
+.tmDescription {
+    margin-top: 8px;
+    color: var(--mantine-color-dimmed);
+    font-size: var(--mantine-font-size-xs);
+}
+
+.tmRoot {
+    position: relative;
+    padding: var(--mantine-spacing-md);
+    transition: border-color 150ms ease;
+}
+
+.tmRoot[data-checked] {
+    border-color: var(--mantine-primary-color-filled);
+}
+
+.tmRoot:hover {
+    background-color: var(--mantine-color-gray-0); /* For light mode */
+}
