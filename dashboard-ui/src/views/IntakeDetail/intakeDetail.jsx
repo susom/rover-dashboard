@@ -45,17 +45,14 @@ export function IntakeDetail() {
         setActiveStep((current) => (current > 0 ? current - 1 : current));
 
     const successCallback = (res) => {
-        console.log('success', res)
         setData(res?.surveys || [])
+        if (res?.surveys?.[0]?.title) {
+            setActiveTab(res.surveys[0].title); // Default to first tab
+        }
         setDetail(res?.completed_form_immutable)
         setDetailMutable(res?.completed_form_mutable)
         setPretty(res?.completed_form_pretty)
         setmutableUrl(res?.mutable_url)
-
-        if (res?.surveys?.[0]?.title) {
-            setActiveTab(res.surveys[0].title); // Default to first tab
-        }
-
         setIsLoading(false);
     }
 
@@ -139,14 +136,14 @@ export function IntakeDetail() {
     const renderTable = () => {
         const tab = {
             caption: 'Survey Details',
-            head: ['Field', 'Value'],
+            head: ['Variable', "Label", "Value"],
             body: pretty
-                ? Object.entries(pretty).map(([key, value]) => [key, value || "No value"])
+                ? Object.entries(pretty).map(([key, v]) => [key, v.label, v.value || ""])
                 : [],
         }
 
         return (
-            <Table.ScrollContainer h={600}>
+            <Table.ScrollContainer h={520}>
                 <Table
                     stickyHeader
                     striped
@@ -156,42 +153,20 @@ export function IntakeDetail() {
         );
     }
 
-    const viewParentIntake = () => {
-
-        // // Open a new window or tab
-        // const newWindow = window.open('', '_blank');
-        //
-        // if (newWindow) {
-        //     // Write the HTML content to the new window
-        //     newWindow.document.open();
-        //     newWindow.document.write(detail?.summary);
-        //     newWindow.document.close();
-        // } else {
-        //     console.error('Unable to open a new window. Please check your browser settings.');
-        // }
-    }
-
-    const { projectInfo, tabs, overallSteps, tabLinks, user } = data;
+    const { overallSteps} = data;
 
     const renderContent = () => {
-        let act = data.find((tab) => tab?.title === activeTab)
-        console.log(act)
-        // if(act && act?.complete === "2") { //render completed links for editing
+        let act = data.find((tab) => {
+            return tab.title === activeTab
+
+        })
             return (
                 <>
-                    {/*<Badge m="sm" color="green">Complete</Badge>*/}
-                    {/*<Blockquote*/}
-                    {/*    color="green"*/}
-                    {/*    mb="md"*/}
-                    {/*    radius="md"*/}
-                    {/*>Thank you for completing the survey, click the following link to edit your previous submission*/}
-                    {/*</Blockquote>*/}
                     <ChildContent
                         immutableParentInfo={detail}
                         mutableParentInfo={detailMutable}
                         childInfo={act}
                     />
-
                 </>
             )
     }
@@ -233,26 +208,6 @@ export function IntakeDetail() {
                     </Grid.Col>
                 </Grid>
             )
-        // } else {
-        //     return (
-        //         <Grid style={{ height: "100%" }} gutter="md">
-        //             <Grid.Col span={12}>
-        //                 <Card shadow="sm" p="lg" style={{ height: "100%" }}>
-        //                     <Card.Section
-        //                         style={{
-        //                             display: "flex",
-        //                             alignItems: "center",
-        //                             justifyContent: "center",
-        //                         }}
-        //                     >
-        //                         <Badge color="gray" size="lg">No Services requested!</Badge>
-        //                     </Card.Section>
-        //                 </Card>
-        //             </Grid.Col>
-        //         </Grid>
-        //     )
-        // }
-
     }
 
     return (
@@ -316,23 +271,9 @@ export function IntakeDetail() {
                         <Text size="sm" c="dimmed">Principal Investigator:</Text>
                         <Text size="sm" fw={700}>{`${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}`}</Text>
                     </Group>
-
-                    {/*<List size="sm" spacing="xs">*/}
-                    {/*    <List.Item>*/}
-
-                    {/*        /!*<b>Project Name:</b> {detail?.research_title}*!/*/}
-                    {/*    </List.Item>*/}
-                    {/*    /!*TODO Must change if record_id is not the default id*!/*/}
-                    {/*    <List.Item>*/}
-                    {/*        <b>Universal ID #:</b> {detail?.record_id}*/}
-                    {/*    </List.Item>*/}
-                    {/*    <List.Item>*/}
-                    {/*        <b>PI:</b> {`${detail?.pi_f_name} ${detail?.pi_l_name}`}*/}
-                    {/*    </List.Item>*/}
-                    {/*</List>*/}
                 </Blockquote>
                 <Divider label="Universal Intake submissions" labelPosition="center" my="md" />
-                <Modal size="xl" opened={modalOpen} onClose={close} title="Universal Intake Submission I">
+                <Modal size="80%" opened={modalOpen} onClose={close} title="Universal Intake Submission I">
                     {modalOpen && renderTable()}
                 </Modal>
                 <Card shadow="sm" p="lg" my="lg">
@@ -357,17 +298,12 @@ export function IntakeDetail() {
                                     </>
 
                                 }
-                                {/*<Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>*/}
-                                {/*<Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>*/}
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
                             <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>
                         </Timeline.Item>
                     </Timeline>
-                    {/*<Text>Prior submissions</Text>*/}
-                    {/*<Label></Label>*/}
-                    {/*<Button>Look</Button>*/}
                 </Card>
 
                 <Divider label="Services" labelPosition="center" my="md" />
