@@ -705,19 +705,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     private function getRequiredChildPIDs($completedIntake, $projectSettings)
     {
         $requiredChildPIDs = [];
-        $firstRecord = reset($completedIntake);
-
         foreach($projectSettings['project-id'] as $pid)
             $requiredChildPIDs[] = $pid;
-
-//        foreach ($firstRecord as $key => $value) {
-//            if ($this->isValidServiceKey($key, $value)) {
-//                $mappingKey = array_search($key, $projectSettings['mapping-field']);
-//                if ($mappingKey !== false) {
-//                    $requiredChildPIDs[] = $projectSettings['project-id'][$mappingKey];
-//                }
-//            }
-//        }
 
         return $requiredChildPIDs;
     }
@@ -870,5 +859,4 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
         return array_key_first($response['ids']);
     }
-
 }
