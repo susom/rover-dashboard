@@ -6,8 +6,8 @@ import React, {useState, useEffect, useCallback} from "react";
 // import { IconPlus } from '@tabler/icons-react';
 
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Text} from "@mantine/core";
-import {IconExternalLink, IconInfoCircle, IconPlus} from "@tabler/icons-react";
+import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Text, Table} from "@mantine/core";
+import {IconBook, IconExternalLink, IconInfoCircle, IconPlus} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -15,8 +15,10 @@ import {useDisclosure} from "@mantine/hooks";
 export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}) {
     let jsmoModule;
     const [opened, { open, close }] = useDisclosure(false);
+    const [childOpened, { open: childOpen, close: childClose }] = useDisclosure(false);
     const [submissions, setSubmissions] = useState([])
     const [loading, setLoading] = useState(true)
+    const [childSelected, setChildSelected] = useState(null)
 
     if (import.meta?.env?.MODE !== 'development')
         jsmoModule = ExternalModules.Stanford.IntakeDashboard;
@@ -26,7 +28,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         setSubmissions([])
 
         jsmoModule.getChildSubmissions(
-            {'child_id': childInfo?.child_id, 'universal_id': immutableParentInfo?.record_id},
+            {'child_pid': childInfo?.child_id, 'universal_id': immutableParentInfo?.record_id},
             (res) => {
                 setLoading(false)
                 setSubmissions(res?.data || [])
@@ -49,20 +51,37 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     }
 
     const onClick = (e) => {
-        jsmoModule.newChildRequest({'child_id': e.currentTarget.id, 'universal_id': immutableParentInfo?.record_id}, successCallback, errorCallback)
+        jsmoModule.newChildRequest({'child_id': childInfo?.child_id, 'universal_id': immutableParentInfo?.record_id}, successCallback, errorCallback)
     }
 
-    const renderEditButton = (url) => {
-        if(url){
+    const renderInteraction = (data) => {
+        if(data?.survey_url){
             return (
                 <Button
                     size="xs"
                     color="green"
                     component="a"
-                    href={url}
+                    href={data.survey_url}
                     rightSection={<IconExternalLink size={20} />}
                 >
                     Edit
+                </Button>
+            )
+        } else {
+            let findChild = submissions.findIndex(e => e.record_id === data.record_id);
+            return (
+                <Button
+                    size="xs"
+                    color="blue"
+                    variant="light"
+                    childIndex = {findChild}
+                    rightSection={<IconBook size={16} />}
+                    onClick={() => {
+                        setChildSelected(findChild)
+                        childOpen()
+                    }}
+                >
+                    View
                 </Button>
             )
         }
@@ -75,11 +94,31 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             return "Complete"
     }
 
+    const renderChildModal = () => {
+        const tab = {
+            caption: 'Survey Details',
+            head: ['Variable', "Label", "Value"],
+            body: submissions[childSelected]?.completed_form_pretty
+                ? Object.entries(submissions[childSelected]?.completed_form_pretty).map(([key, v]) => [key, v.label, v.value || ""])
+                : [],
+        }
+
+        return (
+            <Table.ScrollContainer h={520}>
+                <Table
+                    stickyHeader
+                    striped
+                    data={tab}
+                />
+            </Table.ScrollContainer>
+        );
+    }
+
     let body = submissions.map(e => [
         e.record_id,
         filterStatuses(e?.child_survey_complete),
         e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
-        renderEditButton(e.survey_url)]
+        renderInteraction(e)]
     )
 
     const renderButton = () => {
@@ -93,7 +132,6 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                         m="sm"
                         data-disabled
                         disabled
-                        id={childInfo?.child_id}
                     >New Request</Button>
                 </Tooltip>
             )
@@ -104,7 +142,6 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     rightSection={<IconPlus size={20} />}
                     component="a"
                     m="sm"
-                    id={childInfo?.child_id}
                 >New Request</Button>
             )
         }
@@ -123,11 +160,15 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 </Alert>
                 <div style={{display: 'flex', justifyContent: 'center', marginTop: '1rem'}}>
                     <Button
+                        onClick={onClick}
                     >Confirm</Button>
                 </div>
             </Modal>
             <LoadingOverlay visible={loading} loaderProps={{ children: 'Loading...' }} />
             {renderButton()}
+            <Modal size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
+                {childOpened && renderChildModal()}
+            </Modal>
             <RequestTable
                 columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Survey Link']}
                 body={body}
