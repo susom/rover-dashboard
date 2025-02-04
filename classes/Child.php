@@ -2,7 +2,6 @@
 namespace Stanford\IntakeDashboard;
 use REDCap;
 use Survey;
-use Project;
 
 class Child {
     private $module;
