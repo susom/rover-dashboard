@@ -6,6 +6,7 @@ require_once "Utilities/RepeatingForms.php";
 require_once "Utilities/Sanitizer.php";
 //require_once "classes/ModuleCore/ModuleCore.php";
 require_once("classes/Child.php");
+require_once ("classes/DashboardUtil.php");
 
 use ExternalModules;
 use Exception;
@@ -413,10 +414,17 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     {
         $msg = $e->getMessage();
         $this->emError("Error: $msg");
-        return json_encode([
-            "error" => $msg,
+        http_response_code(500); // Send HTTP 500 status
+        header('Content-Type: application/json'); // Ensure JSON response
+        echo json_encode([
+            "error" => $e->getMessage(),
             "success" => false
         ]);
+        exit;
+//        return json_encode([
+//            "error" => $msg,
+//            "success" => false
+//        ]);
     }
 
     /**
@@ -589,28 +597,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     /**
-     * @param $project
-     * @param $fields
-     * @return array
-     * Removes hidden fields before sending the contents of getData to client
-     */
-    public function filterHiddenFields($project, &$fields) {
-        $new = [];
-        $excluded = ["requester_lookup", "pi_lookup", "one_lookup"];
-
-        foreach($fields as $k => $v) {
-            if($project->metadata[$k] && (str_contains($project->metadata[$k]['misc'],'HIDDEN') || in_array($project->metadata[$k], $excluded))) { // Hidden fields should not be shown to client
-                unset($fields[$k]);
-            } else {
-                $label = trim($project->metadata[$k]['element_label']);
-                if(!empty($label)){
-                    $new[$label] = $v;
-                }
-            }
-        }
-        return $new;
-    }
-    /**
      * @param $universalId
      * @return false|string
      */
@@ -631,8 +617,12 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
 
+
+            //Parse fields & convert labels for UI render of submitted form
             $pretty = $completedIntake[0];
-            $pretty = $this->filterHiddenFields($project, $pretty);
+            $excluded = ["requester_lookup", "pi_lookup", "one_lookup", "webauth_user"];
+            $du = new DashboardUtil($this, $projectSettings);
+            $pretty = $du->prepareFieldsForRender($parentId, $pretty, $excluded);
 
             $childSurveys = $project->surveys;
             $mutableUrl = [];
@@ -751,18 +741,24 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         }
     }
 
+    /**
+     * Given a child PID + Universal record ID: determine
+     * @param $payload
+     * @return false|string|void
+     */
     private function getChildSubmissions($payload){
         try {
-            if(empty($payload['child_id']) || empty($payload['universal_id']))
+            if(empty($payload['child_pid']) || empty($payload['universal_id']))
                 throw new \Exception("Missing child ID or Universal ID");
+
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
 
-            $child = new Child($this, $payload['child_id'], $parent_id, $pSettings);
+            $child = new Child($this, $payload['child_pid'], $parent_id, $pSettings);
 
             $submissions = $child->childRecordExists($payload['universal_id']);
-            // Grab all field names for first two required surveys
 
+            // Grab first form name for this child
             $mainSurvey = $child->getMainSurveyFormName();
 
             //Iterate over all submissions to determine if we need to render a return link
@@ -775,8 +771,13 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 // Grab timestamp for dashboard display
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
 
-                // Set default field to make it easier to render completion status on dashboard (form name agnostic)
+                // Set default field to make it easier to render survey completion status on dashboard (form name agnostic)
                 $submissions[$in]['child_survey_complete'] = $submission[$completionVariable];
+
+                //Get pretty form to render submitted information
+                $du = new DashboardUtil($this, $pSettings);
+                $pretty = $du->prepareFieldsForRender($payload['child_pid'], $submissions[$in], [], $mainSurvey);
+                $submissions[$in]['completed_form_pretty'] = $pretty;
             }
 
             return json_encode(["data" => $submissions, "success" => true]);
