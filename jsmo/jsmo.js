@@ -28,7 +28,7 @@
             })
             .catch((err) => {
                 console.error("Ajax error: ", err);
-                errCallback({ success: false, error: err.message });
+                errCallback({ success: false, error: err });
             });
     }
 
