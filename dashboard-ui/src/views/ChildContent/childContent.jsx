@@ -6,13 +6,15 @@ import React, {useState, useEffect, useCallback} from "react";
 // import { IconPlus } from '@tabler/icons-react';
 
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Button, Tooltip} from "@mantine/core";
-import {IconExternalLink, IconPlus} from "@tabler/icons-react";
+import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Text} from "@mantine/core";
+import {IconExternalLink, IconInfoCircle, IconPlus} from "@tabler/icons-react";
+import {useDisclosure} from "@mantine/hooks";
 
 
 
 export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}) {
     let jsmoModule;
+    const [opened, { open, close }] = useDisclosure(false);
     const [submissions, setSubmissions] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -98,7 +100,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         } else {
             return (
                 <Button
-                    onClick={onClick}
+                    onClick={open}
                     rightSection={<IconPlus size={20} />}
                     component="a"
                     m="sm"
@@ -110,10 +112,24 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
 
     return (
         <div>
+            <Modal title={`New Request - ${childInfo?.title}`} size="xl" opened={opened} onClose={close} centered>
+                <Alert variant="light" color="blue" title="Notice" icon={<IconInfoCircle/>}>
+                    Are you sure you want to create a new request?
+                    <List size="sm">
+                        <List.Item>Continuing with this process will create a new ticket in the corresponding team's queue</List.Item>
+                        <List.Item>New Requests are required if amending a previous request or asking for additional work to be done</List.Item>
+                        <List.Item>Please complete any previously submitted surveys before creating additional requests</List.Item>
+                    </List>
+                </Alert>
+                <div style={{display: 'flex', justifyContent: 'center', marginTop: '1rem'}}>
+                    <Button
+                    >Confirm</Button>
+                </div>
+            </Modal>
             <LoadingOverlay visible={loading} loaderProps={{ children: 'Loading...' }} />
             {renderButton()}
             <RequestTable
-                columns={['Child ID', 'Status', 'Completion Timestamp', 'Survey Link']}
+                columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Survey Link']}
                 body={body}
             />
         </div>
