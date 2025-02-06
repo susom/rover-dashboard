@@ -6,7 +6,6 @@ import {
     Group,
     Text,
     Table,
-    Stepper,
     Modal,
     Button,
     Box,
@@ -16,7 +15,7 @@ import {
     Title,
     Blockquote,
     List,
-    Divider,
+    Divider, Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
@@ -172,9 +171,8 @@ export function IntakeDetail() {
     }
 
     const renderChildSurveys = () => {
-        // if(data.length) {
             return (
-                <Grid style={{ height: "100%" }} gutter="md">
+                <Grid gutter="md">
                     {/* Tabs */}
                     <Grid.Col
                         span={3}
@@ -200,7 +198,7 @@ export function IntakeDetail() {
 
                     {/* Tab Content */}
                     <Grid.Col span={9}>
-                        <Card shadow="sm" p="lg" style={{ height: "100%" }}>
+                        <Card shadow="sm" p="lg">
                             <Card.Section>
                                 {data.length && renderContent()}
                             </Card.Section>
@@ -210,8 +208,63 @@ export function IntakeDetail() {
             )
     }
 
+    const renderMutableSection = () => {
+        if (detail?.intake_active === "0") {
+            return (
+                <>
+                    <Text c="red" fw={700} size="sm">Intake Inactive: </Text>
+                    <Tooltip label="Intake inactive - Functionality Disabled">
+                        <Button
+                            disabled
+                            onClick={e => e.preventDefault()}
+                            color="red"
+                            rightSection={<IconExternalLink size={16} />}
+                            component="a"
+                            href={mutableUrl}
+                            variant="light"
+                            size="xs"
+                        >
+                            Complete
+                        </Button>
+                    </Tooltip>
+                </>
+            );
+        }
+
+        return detailMutable?.complete !== "2" ? (
+            <>
+                <Text c="red" fw={700} size="sm">Submission II Incomplete: </Text>
+                <Button
+                    disabled={detail?.intake_active === "0"}
+                    color="red"
+                    rightSection={<IconExternalLink size={16} />}
+                    component="a"
+                    href={mutableUrl}
+                    variant="light"
+                    size="xs"
+                >
+                    Complete
+                </Button>
+            </>
+        ) : (
+            <>
+                <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
+                <Button
+                    color="green"
+                    rightSection={<IconExternalLink size={16} />}
+                    component="a"
+                    href={mutableUrl}
+                    variant="light"
+                    size="xs"
+                >
+                    Edit
+                </Button>
+            </>
+        );
+    };
+    console.log(detail)
     return (
-        <AppShell header={{ height: 40 }} padding="md">
+        <AppShell header={{ height: 55 }} padding="md">
             <AppShell.Header>
                 <AppHeader />
             </AppShell.Header>
@@ -256,9 +309,17 @@ export function IntakeDetail() {
                             <Group spacing="xs" align="center" mt="xs">
                                 <Text size="sm" c="dimmed">Intake deactivated by user:</Text>
                                 <Text size="sm" fw={700}>{detail?.deactivation_user}</Text>
+                                <Text size="sm" c="dimmed">on</Text>
+                                <Text size="sm" fw={700}>{detail?.active_change_date}</Text>
                             </Group>
+                            <Group spacing="xs" align="center" mt="xs">
+                                <Text size="sm" c="dimmed">Reason:</Text>
+                                <Text size="sm" fw={700}>{detail?.deactivation_reason}</Text>
+                            </Group>
+                            <Divider mt="sm" mb="sm" size="sm" />
                         </>
                     }
+
                     <Group spacing="xs" align="center" mt="xs">
                         <Text size="sm" c="dimmed">Project Name:</Text>
                         <Text size="sm" fw={700}>{detailMutable?.research_title}</Text>
@@ -286,18 +347,12 @@ export function IntakeDetail() {
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Universal Intake submission II">
+                            {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
+                                <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
+                            }
                             <Group spacing="xs" align="center">
-                                {detailMutable?.complete !== "2" ?
-                                    <>
-                                        <Text c="red" fw={700} size="sm">Submission II Incomplete: </Text>
-                                        <Button color="red" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Complete</Button>
-                                    </> :
-                                    <>
-                                        <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                                        <Button color="green" rightSection={<IconExternalLink size={16} />} component="a" href={mutableUrl} variant="light" size="xs">Edit</Button>
-                                    </>
+                                {renderMutableSection()}
 
-                                }
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
