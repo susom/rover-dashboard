@@ -152,7 +152,7 @@ export function Dashboard() {
 
     return (
         <AppShell
-            header={{ height: 40 }}
+            header={{ height: 55 }}
             padding="md"
         >
             <AppShell.Header>
