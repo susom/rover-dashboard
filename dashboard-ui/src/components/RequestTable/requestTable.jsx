@@ -15,11 +15,13 @@ export function RequestTable({caption, columns, body}) {
     }
     return (
         <>
-            <Table
-                m="sm"
-                data={tableConfig}
-                striped
-            />
+            <Table.ScrollContainer type="native" scrollbars="y" mah={300}>
+                <Table
+                    m="sm"
+                    data={tableConfig}
+                    striped
+                />
+            </Table.ScrollContainer>
         </>
     )
 }
