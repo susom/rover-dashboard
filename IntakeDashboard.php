@@ -149,9 +149,18 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     {
         //Functionality here serves to update child records in case edits are made on data-entry page (doesn't trigger survey complete hook)
         if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
-            $b = 1;
-        }
+            $parent_id = $this->getSystemSetting('parent-project');
 
+            if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
+                $pSettings = $this->getProjectSettings($parent_id);
+
+                //Iterate through all linked children and overwrite with new parent data
+                foreach($pSettings['project-id'] as $childProjectId) {
+                    $child = new Child($this, $childProjectId, $parent_id, $pSettings);
+                    $child->updateParentData($record);
+                }
+            }
+        }
     }
 
 
@@ -224,14 +233,12 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
+
+                        //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {
                             $child = new Child($this, $childProjectId, $parent_id, $pSettings);
                             $child->updateParentData($record);
                         }
-
-
-
-                        //TODO Iterate through all linked children and overwrite with new parent data
                     }
                 }
             }
