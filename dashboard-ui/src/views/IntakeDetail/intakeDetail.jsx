@@ -8,7 +8,7 @@ import {
     Table,
     Modal,
     Button,
-    Box,
+    Alert,
     Badge,
     Timeline,
     Stack,
@@ -20,7 +20,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { IconBook, IconExternalLink, IconArrowRight } from '@tabler/icons-react';
+import { IconBook, IconExternalLink, IconCheck } from '@tabler/icons-react';
 import {useNavigate, useParams} from "react-router-dom";
 import {ChildContent} from "../ChildContent/childContent.jsx";
 
@@ -262,17 +262,19 @@ export function IntakeDetail() {
             </>
         );
     };
-    console.log(detail)
+
     return (
-        <AppShell header={{ height: 55 }} padding="md">
+        <AppShell
+            padding="md"
+            header={{ height: 55, offset: true}}
+        >
             <AppShell.Header>
                 <AppHeader />
             </AppShell.Header>
             <AppShell.Main
+                h="calc(100vh - 55px)" //Prevent UI from scrolling under
                 style={{
                     backgroundColor: "rgb(248,249,250)",
-                    padding: "30px",
-                    margin: "30px 0 0 0",
                 }}
             >
                 {/* Header with button */}
@@ -338,27 +340,38 @@ export function IntakeDetail() {
                     {modalOpen && renderTable()}
                 </Modal>
                 <Card shadow="sm" p="lg" my="lg">
-                    <Timeline active={1} lineWidth={3} bulletSize={18}>
-                        <Timeline.Item title="Universal Intake submission I">
+                    <Timeline active={1} lineWidth={3} bulletSize={24}>
+                        <Timeline.Item bullet={<IconCheck size={16} />} title="Universal Intake submission I">
                             <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>
                             <Group spacing="xs" align="center">
                                 <Text c="dimmed" size="sm">View prior survey submission:</Text>
                                 <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
                             </Group>
                         </Timeline.Item>
-                        <Timeline.Item title="Universal Intake submission II">
+                        <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Universal Intake submission II" lineVariant="dashed">
                             {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
                                 <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
                             }
                             <Group spacing="xs" align="center">
                                 {renderMutableSection()}
-
                             </Group>
                         </Timeline.Item>
-                        <Timeline.Item title="Complete additional surveys required for requested services" lineVariant="dashed">
-                            <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>
-                        </Timeline.Item>
+                        {/*<Timeline.Item title="Complete additional surveys required for requested services">*/}
+                        {/*    <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>*/}
+                        {/*</Timeline.Item>*/}
                     </Timeline>
+                    {detailMutable?.complete === "2" &&
+                        <Alert mt="md" variant="light" color="green" title="Universal Surveys Complete!" icon={<IconCheck size={24} />}>
+                            <List>
+                                <List.Item><Text size="sm" fw={500}>Thank you for completing Intake Surveys I and II!</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>Editing Submission II will also update each of the linked requests below as changes are made</Text></List.Item>
+                            </List>
+
+                        </Alert>
+                    }
+
+
                 </Card>
 
                 <Divider label="Services" labelPosition="center" my="md" />
