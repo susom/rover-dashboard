@@ -127,6 +127,44 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     /**
+     * @param int $project_id
+     * @param string|NULL $record
+     * @param string $instrument
+     * @param int $event_id
+     * @param int|NULL $group_id
+     * @param string|NULL $survey_hash
+     * @param int|NULL $response_id
+     * @param int $repeat_instance
+     * @return void
+     */
+    public function redcap_save_record(
+        int    $project_id,
+        string $record = NULL,
+        string $instrument,
+        int $event_id,
+        int $group_id = NULL,
+        string $survey_hash = NULL,
+        int $response_id = NULL,
+        int $repeat_instance = 1)
+    {
+        //Functionality here serves to update child records in case edits are made on data-entry page (doesn't trigger survey complete hook)
+        if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
+            $parent_id = $this->getSystemSetting('parent-project');
+
+            if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
+                $pSettings = $this->getProjectSettings($parent_id);
+
+                //Iterate through all linked children and overwrite with new parent data
+                foreach($pSettings['project-id'] as $childProjectId) {
+                    $child = new Child($this, $childProjectId, $parent_id, $pSettings);
+                    $child->updateParentData($record);
+                }
+            }
+        }
+    }
+
+
+    /**
      * @param $project_id
      * @param $record
      * @param $instrument
@@ -195,14 +233,12 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
+
+                        //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {
                             $child = new Child($this, $childProjectId, $parent_id, $pSettings);
                             $child->updateParentData($record);
                         }
-
-
-
-                        //TODO Iterate through all linked children and overwrite with new parent data
                     }
                 }
             }
@@ -246,6 +282,13 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             if(!empty($response['errors'])){
                 throw new \Exception("Error on reactivation/deactivation save" . implode(', ', $response['errors']));
             }
+            // Update all children with new data
+            $requiredChildPIDs = $this->getRequiredChildPIDs($pSettings);
+            foreach($requiredChildPIDs as $childProjectId) {
+                $child = new Child($this, $childProjectId, $parent_id, $pSettings);
+                $child->updateParentData($completedIntake['record_id']);
+            }
+
             return json_encode(["data" => $completedIntake, "success" => true]);
         } catch (\Exception $e) {
             $this->handleGlobalError($e);
@@ -615,7 +658,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-immutable']);
             $mutableIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-mutable']);
 
-            $requiredChildPIDs = $this->getRequiredChildPIDs($completedIntake, $projectSettings);
+            $requiredChildPIDs = $this->getRequiredChildPIDs($projectSettings);
 
 
             //Parse fields & convert labels for UI render of submitted form
@@ -688,11 +731,10 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     /**
-     * @param $completedIntake
      * @param $projectSettings
      * @return array
      */
-    private function getRequiredChildPIDs($completedIntake, $projectSettings)
+    private function getRequiredChildPIDs($projectSettings)
     {
         $requiredChildPIDs = [];
         foreach($projectSettings['project-id'] as $pid)

@@ -6,7 +6,7 @@ import React, {useState, useEffect, useCallback} from "react";
 // import { IconPlus } from '@tabler/icons-react';
 
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Text, Table} from "@mantine/core";
+import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
 import {IconBook, IconExternalLink, IconInfoCircle, IconPlus} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
@@ -56,6 +56,10 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
 
     const renderInteraction = (data) => {
         if(data?.survey_url){
+            if(immutableParentInfo?.intake_active === "0") {
+                return <Badge color="red" radius="sm">Canceled</Badge>;
+            }
+
             return (
                 <Button
                     size="xs"
@@ -121,10 +125,12 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         renderInteraction(e)]
     )
 
-    const renderButton = () => {
-        if(mutableParentInfo?.complete !== "2") {
+    const renderRequestButton = () => {
+        let label
+
+        if(immutableParentInfo?.intake_active === "0") { //If deactivated
             return (
-                <Tooltip label="Please complete universal survey II">
+                <Tooltip label="This intake is inactive, no requests can be submitted">
                     <Button
                         onClick={e => e.preventDefault()}
                         rightSection={<IconPlus size={20} />}
@@ -136,14 +142,29 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 </Tooltip>
             )
         } else {
-            return (
-                <Button
-                    onClick={open}
-                    rightSection={<IconPlus size={20} />}
-                    component="a"
-                    m="sm"
-                >New Request</Button>
-            )
+            if(mutableParentInfo?.complete !== "2") {
+                return (
+                    <Tooltip label="Please complete universal survey II">
+                        <Button
+                            onClick={e => e.preventDefault()}
+                            rightSection={<IconPlus size={20} />}
+                            component="a"
+                            m="sm"
+                            data-disabled
+                            disabled
+                        >New Request</Button>
+                    </Tooltip>
+                )
+            } else {
+                return (
+                    <Button
+                        onClick={open}
+                        rightSection={<IconPlus size={20} />}
+                        component="a"
+                        m="sm"
+                    >New Request</Button>
+                )
+            }
         }
     }
 
@@ -165,7 +186,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 </div>
             </Modal>
             <LoadingOverlay visible={loading} loaderProps={{ children: 'Loading...' }} />
-            {renderButton()}
+            {renderRequestButton()}
             <Modal size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
                 {childOpened && renderChildModal()}
             </Modal>

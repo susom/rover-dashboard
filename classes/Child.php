@@ -59,6 +59,12 @@ class Child {
             "records" => $universalId
         ];
 
+        if (!defined('PROJECT_ID')){ //If we are navigating from deactivation (still have to update child records) - getData will be outside of project context
+            define("PROJECT_ID", $this->getParentProjectId()); //Force project context to enable getFieldNames
+            global $Proj;
+            $Proj = new \Project($this->getParentProjectId());
+        }
+
         // Grab all field names for first two required surveys
         $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
         $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
