@@ -1,5 +1,20 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {AppShell, Button, Pagination, Card, ActionIcon, Table, Text, Divider, Title, Blockquote, List, Loader, Tooltip} from '@mantine/core';
+import {
+    AppShell,
+    Button,
+    Pagination,
+    Card,
+    ActionIcon,
+    Table,
+    Text,
+    Divider,
+    Title,
+    Blockquote,
+    List,
+    Loader,
+    Tooltip,
+    rem
+} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
@@ -152,13 +167,16 @@ export function Dashboard() {
 
     return (
         <AppShell
-            header={{ height: 55 }}
+            header={{ height: 55, offset: true}}
             padding="md"
         >
             <AppShell.Header>
                 <AppHeader/>
             </AppShell.Header>
-            <AppShell.Main style={{backgroundColor: 'rgb(248,249,250)'}}>
+            <AppShell.Main
+                style={{backgroundColor: 'rgb(248,249,250)'}}
+                h="calc(100vh - 55px)" //Prevent UI from scrolling under
+            >
                 <Title order={3}>Welcome to your intake dashboard</Title>
                 <Text c="dimmed">Logged in as: {globalUsername}</Text>
                 <Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>
