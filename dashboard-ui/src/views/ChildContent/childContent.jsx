@@ -185,7 +185,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     >Confirm</Button>
                 </div>
             </Modal>
-            <LoadingOverlay visible={loading} loaderProps={{ children: 'Loading...' }} />
+            <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
             {renderRequestButton()}
             <Modal size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
                 {childOpened && renderChildModal()}
