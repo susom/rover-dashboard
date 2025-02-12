@@ -28,15 +28,19 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
     }
 
-//    public function setModuleCore(){
-//        $moduleCore = new ModuleCore($this);
-//    }
-//
-//    public function getModuleCore(){
-//        if(!$this->moduleCore)
-//            $this->setModuleCore(new ModuleCore($this));
-//        return $this->moduleCore;
-//    }
+    /**
+     * //Required for link-based access from control panel (non-admin)
+     * @param $project_id
+     * @param $link
+     * @return mixed|null
+     */
+    function redcap_module_link_check_display($project_id, $link)
+    {
+        if(empty($_SESSION['username']))
+            return null;
+        return $link;
+    }
+
 
     /**
      * Helper method for inserting the JSMO JS into a page along with any preload data

@@ -17,7 +17,14 @@
     "enable-no-auth-logging": true,
 
     "links": {
-        "project": [],
+        "project": [
+            {
+                "name": "Intake Dashboard",
+                "icon": "gear",
+                "url" : "pages/root.php",
+                "show-header-and-footer": false
+            }
+        ],
         "control-center": [
             {
                 "name": "Intake Dashboard",
