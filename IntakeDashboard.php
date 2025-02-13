@@ -428,7 +428,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         $saveData = [
             [
                 "record_id" => $username,
-                "type" => "Secondary",
                 "intake_id" => $universalId,
                 "redcap_event_name" => $event_name,
                 "redcap_repeat_instrument" => $form_name,
