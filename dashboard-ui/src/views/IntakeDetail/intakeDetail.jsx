@@ -335,20 +335,20 @@ export function IntakeDetail() {
                         <Text size="sm" fw={700}>{`${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}`}</Text>
                     </Group>
                 </Blockquote>
-                <Divider label="Universal Intake submissions" labelPosition="center" my="md" />
-                <Modal size="80%" opened={modalOpen} onClose={close} title="Universal Intake Submission I">
+                <Divider label="Unified Intake submissions" labelPosition="center" my="md" />
+                <Modal size="80%" opened={modalOpen} onClose={close} title="Requester Information">
                     {modalOpen && renderTable()}
                 </Modal>
                 <Card shadow="sm" p="lg" my="lg">
                     <Timeline active={1} lineWidth={3} bulletSize={24}>
-                        <Timeline.Item bullet={<IconCheck size={16} />} title="Universal Intake submission I">
+                        <Timeline.Item bullet={<IconCheck size={16} />} title="Requester Information">
                             <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>
                             <Group spacing="xs" align="center">
                                 <Text c="dimmed" size="sm">View prior survey submission:</Text>
                                 <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
                             </Group>
                         </Timeline.Item>
-                        <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Universal Intake submission II" lineVariant="dashed">
+                        <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Unified Intake Submission" lineVariant="dashed">
                             {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
                                 <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
                             }
@@ -361,19 +361,17 @@ export function IntakeDetail() {
                         {/*</Timeline.Item>*/}
                     </Timeline>
                     {detailMutable?.complete === "2" &&
-                        <Alert mt="md" variant="light" color="green" title="Universal Surveys Complete!" icon={<IconCheck size={24} />}>
+                        <Alert mt="md" variant="light" color="green" title="Unified Intake Complete!" icon={<IconCheck size={24} />}>
                             <List>
-                                <List.Item><Text size="sm" fw={500}>Thank you for completing Intake Surveys I and II!</Text></List.Item>
-                                <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests</Text></List.Item>
-                                <List.Item><Text size="sm" fw={500}>Editing Submission II will also update each of the linked requests below as changes are made</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>Thank you for completing the Unified Intake Survey!</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>Providing this information in advance helps minimize duplication and helps streamline each team’s workflow.</Text></List.Item>
+                                <List.Item><Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text></List.Item>
                             </List>
-
                         </Alert>
                     }
 
-
                 </Card>
-
                 <Divider label="Services" labelPosition="center" my="md" />
                 {renderChildSurveys()}
             </AppShell.Main>

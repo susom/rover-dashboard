@@ -135,10 +135,13 @@ class Child {
             $project = new \Project($id);
             $survey = reset($project->surveys);
 
+
             // Edit title of dashboard tab to ensure blank surveys have a naming value
+            $title = !empty($survey['title']) ? $survey['title'] : ucwords(str_replace('_', ' ', $survey['form_name']));
+
             return [
                 'form_name' => $survey['form_name'],
-                'title' => $survey['title'] ?? ucwords(str_replace('_', ' ', $survey['form_name'])),
+                'title' => $title,
                 'child_id' => $id
             ];
         }, [$this->getChildProjectId()]);
