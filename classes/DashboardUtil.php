@@ -40,6 +40,8 @@ class DashboardUtil
 
         foreach($fields as $k => $v) {
             $label = isset($project->metadata[$k]) ? trim($project->metadata[$k]['element_label']) : null;
+            $label = strip_tags($label);
+
             if(!empty($label)){
                 // Hidden fields should not be shown to client
                 if(str_contains($project->metadata[$k]['misc'],'HIDDEN') || in_array($project->metadata[$k], $excluded))
