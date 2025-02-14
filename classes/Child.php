@@ -182,13 +182,11 @@ class Child {
 
 
         $response = REDCap::saveData($this->getChildProjectId(), 'json', json_encode($saveData), 'overwrite');
+        $this->getModule()->emDebug("PreCreating Child Record: $reserved for UID: $universalId using primary field $primary_field");
 
         if (!empty($response['errors'])) {
             $errorDetails = json_encode($response['errors']);
             $this->getModule()->emError("Error in pre-creation save data call: $errorDetails");
-            echo "Error details: $errorDetails ";
-            $this->getModule()->emDebug("$response");
-            echo "Reserved ID: $reserved, ";
             return null;
         }
 
