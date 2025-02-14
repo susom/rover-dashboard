@@ -519,8 +519,11 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             ];
             $userIntakes = json_decode(REDCap::getData($initialParams), true);
 
+            // Generate survey link for main page
+            $link = $this->framework->getPublicSurveyUrl($parent_id);
+
             if (empty($userIntakes)) {
-                return json_encode(["data" => [], "success" => true]);
+                return json_encode(["data" => [], "link" => $link, "success" => true]);
             }
 
             // Extract intake IDs from the response
@@ -552,12 +555,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     }
                 }
             }
-
-            // Generate survey link for main page
-            $link = $this->framework->getPublicSurveyUrl($parent_id);
-
-//            $reserved = REDCap::reserveNewRecordId($parent_id);
-//            $link = REDCap::getSurveyLink($reserved, $pSettings['universal-survey-form-immutable'], $pSettings['universal-survey-event'], 1, $parent_id);
 
             return json_encode([
                 "data" => $userIntakes,
