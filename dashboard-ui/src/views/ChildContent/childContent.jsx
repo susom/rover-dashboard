@@ -108,7 +108,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
 
         return (
-            <Table.ScrollContainer h={520}>
+            <Table.ScrollContainer mah={800}>
                 <Table
                     stickyHeader
                     striped
