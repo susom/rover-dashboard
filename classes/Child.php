@@ -168,10 +168,11 @@ class Child {
     // Create new record in child project
     private function preCreateChildRecord($universalId)
     {
-
         $pro = new \Project($this->getChildProjectId());
         $primary_field = $pro->table_pk;
         $reserved = REDCap::reserveNewRecordId($this->getChildProjectId());
+
+        $this->getModule()->emDebug("Attempting to create new child record for $universalId");
         $saveData = [
             [
                 "universal_id" => $universalId,
@@ -181,6 +182,8 @@ class Child {
 
 
         $response = REDCap::saveData($this->getChildProjectId(), 'json', json_encode($saveData), 'overwrite');
+        $this->getModule()->emDebug("PreCreating Child Record: $reserved for UID: $universalId using primary field $primary_field");
+
         if (!empty($response['errors'])) {
             $errorDetails = json_encode($response['errors']);
             $this->getModule()->emError("Error in pre-creation save data call: $errorDetails");
