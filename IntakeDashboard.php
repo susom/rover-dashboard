@@ -117,15 +117,15 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $sanitized = $this->sanitizeInput($payload);
             return match ($action) {
                 'fetchIntakeParticipation' => $this->fetchIntakeParticipation(),
-                'getUserDetail' => $this->getUserDetail($payload),
-                'fetchRequiredSurveys' => $this->fetchRequiredSurveys($payload),
-                'toggleProjectActivation' => $this->toggleProjectActivation($payload),
-                'newChildRequest' => $this->newChildRequest($payload),
-                'getChildSubmissions' => $this->getChildSubmissions($payload),
+                'getUserDetail' => $this->getUserDetail($sanitized),
+                'fetchRequiredSurveys' => $this->fetchRequiredSurveys($sanitized),
+                'toggleProjectActivation' => $this->toggleProjectActivation($sanitized),
+                'newChildRequest' => $this->newChildRequest($sanitized),
+                'getChildSubmissions' => $this->getChildSubmissions($sanitized),
                 default => throw new Exception ("Action $action is not defined"),
             };
         } catch (\Exception $e ) {
-            $this->handleGlobalError($e);
+            return $this->handleGlobalError($e);
         }
 
     }
@@ -247,7 +247,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 }
             }
         } catch (\Exception $e ) {
-            $this->handleGlobalError($e);
+            // No need to return anything from global error handler. This is a hook
+            $this->emError("Error in redcap_survey_complete for PID $project_id, record $record, Reason:", $e->getMessage());
         }
 
     }
@@ -295,7 +296,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             return json_encode(["data" => $completedIntake, "success" => true]);
         } catch (\Exception $e) {
-            $this->handleGlobalError($e);
+            return $this->handleGlobalError($e);
         }
 
     }
@@ -453,27 +454,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
 
     /**
-     * @param $e
-     * @return false|string
-     */
-    public function handleGlobalError($e): false|string
-    {
-        $msg = $e->getMessage();
-        $this->emError("Error: $msg");
-        http_response_code(500); // Send HTTP 500 status
-        header('Content-Type: application/json'); // Ensure JSON response
-        echo json_encode([
-            "error" => $e->getMessage(),
-            "success" => false
-        ]);
-        exit;
-//        return json_encode([
-//            "error" => $msg,
-//            "success" => false
-//        ]);
-    }
-
-    /**
      * @param $proj
      * @param $event_id
      * @return string
@@ -592,10 +572,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $projectSettings = $this->getProjectSettings($parentId);
             $project = new Project($parentId);
 
-            //Prevent detail page rendering (navigating) for inactive intake projects
-//            if(!$this->checkIntakeActivity($parentId, $uid, $projectSettings['universal-survey-event']))
-//                throw new \Exception("Intake is inactive, no detail access can be granted");
-
             $userEventName = $this->generateREDCapEventName($project, $projectSettings['user-info-event']);
 
             // Fetch all intake IDs for the given user
@@ -615,7 +591,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     return $this->fetchRequiredSurveys($payload);
                 }
             }
-//            $this->emLog()
+
+            $this->emDebug("User $username attempting to access intakes for UID $uid, they have no access");
             return json_encode([
                 "success" => false
             ]);
@@ -754,6 +731,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     //Creates the project-specific survey titles for a given array of Child PIDs
+
     private function generateSurveyTitles($universalId, $requiredChildPIDs): array
     {
         $parent_id = $this->getSystemSetting('parent-project');
@@ -766,8 +744,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
         return $titles;
     }
-
-    private function newChildRequest($payload){
+    private function newChildRequest($payload): false|string
+    {
         try {
             if(empty($payload['child_id']) || empty($payload['universal_id']))
                 throw new \Exception("Missing child ID or Universal ID");
@@ -779,7 +757,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $url = $child->getNewSurveyUrl($payload['universal_id']);
             return json_encode(["url" => $url, "success" => true]);
         } catch (\Exception $e) {
-            $this->handleGlobalError($e);
+            return $this->handleGlobalError($e);
         }
     }
 
@@ -824,7 +802,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             return json_encode(["data" => $submissions, "success" => true]);
         } catch (\Exception $e) {
-            $this->handleGlobalError($e);
+            return $this->handleGlobalError($e);
         }
     }
 
@@ -901,5 +879,20 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         }
 
         return array_key_first($response['ids']);
+    }
+
+    /**
+     * @param $e
+     * @return false|string
+     */
+    public function handleGlobalError($e): false|string
+    {
+        $msg = $e->getMessage();
+        $this->emError("Error: $msg");
+
+        return json_encode([
+            "error" => $msg,
+            "success" => false
+        ]);
     }
 }
