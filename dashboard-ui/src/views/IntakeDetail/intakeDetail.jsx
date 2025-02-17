@@ -342,13 +342,16 @@ export function IntakeDetail() {
                 <Card shadow="sm" p="lg" my="lg">
                     <Timeline active={1} lineWidth={3} bulletSize={24}>
                         <Timeline.Item bullet={<IconCheck size={16} />} title="Requester Information">
-                            <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>
+                            {detail?.completion_ts && <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>}
                             <Group spacing="xs" align="center">
                                 <Text c="dimmed" size="sm">View prior survey submission:</Text>
                                 <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
                             </Group>
                         </Timeline.Item>
                         <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Unified Intake Submission" lineVariant="dashed">
+                            {detailMutable?.complete === "2" && detail?.intake_active !== "0" &&
+                                <Text c="dimmed" size="sm">Last Edit: {detail?.completion_ts_mutable}</Text>
+                            }
                             {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
                                 <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
                             }
