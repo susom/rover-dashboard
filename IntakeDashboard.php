@@ -664,7 +664,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             //Manually add timestamp if completed
             $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
-            $completedIntake['completion_ts_mutable'] = Survey::isResponseCompleted($survey_id_mutable, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
+            $mutableIntake['completion_ts'] = Survey::isResponseCompleted($survey_id_mutable, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
 
             //Manually add agnostic completed variable if form changes for frontend logic
             $completedIntake['complete'] = $completedIntake[$projectSettings['universal-survey-form-immutable'] . '_complete'];
@@ -791,7 +791,10 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             foreach($submissions as $in => $submission){
                 $completionVariable = $mainSurvey . "_complete";
                 if(isset($submission[$completionVariable]) && $submission[$completionVariable] !== "2"){
-                    $submissions[$in]['survey_url'] = $child->getSurveyLink($submission['record_id']);
+
+                    $surveyLink = $child->getSurveyLink($submission['record_id']);
+                    $username = $_SESSION['username'];
+                    $submissions[$in]['survey_url'] = "$surveyLink&dashboard_submission_user=$username";
                 }
 
                 // Grab timestamp for dashboard display

@@ -135,9 +135,9 @@ export function IntakeDetail() {
     const renderTable = () => {
         const tab = {
             caption: 'Survey Details',
-            head: ['Variable', "Label", "Value"],
+            head: ["Label", "Value"],
             body: pretty
-                ? Object.entries(pretty).map(([key, v]) => [key, v.label, v.value || ""])
+                ? Object.entries(pretty).map(([key, v]) => [v.label, v.value || ""])
                 : [],
         }
 
@@ -350,7 +350,7 @@ export function IntakeDetail() {
                         </Timeline.Item>
                         <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Unified Intake Submission" lineVariant="dashed">
                             {detailMutable?.complete === "2" && detail?.intake_active !== "0" &&
-                                <Text c="dimmed" size="sm">Last Edit: {detail?.completion_ts_mutable}</Text>
+                                <Text c="dimmed" size="sm">Last Edit: {detailMutable?.completion_ts} by {detailMutable?.last_editing_user}</Text>
                             }
                             {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
                                 <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
