@@ -78,6 +78,7 @@ class Child {
                 unset($parentData[$field]);
             }
         }
+
         return $parentData;
     }
 
@@ -92,8 +93,10 @@ class Child {
         if (!is_null($foundChildRecords)) {
             // Child records exist, update all of them
             $parentData = $this->prepareChildRecord($recordId);
+            $ts = $this->getParentSurveyTimestamp($recordId);
             foreach ($foundChildRecords as $record) {
                 $parentData['record_id'] = $record['record_id']; //Replace record id of parent data with found child for copying
+                $parentData['univ_last_update'] = $ts;
                 $res = REDCap::saveData($childId, 'json', json_encode([$parentData]));
 
                 if (!empty($res['errors'])) {
@@ -263,7 +266,7 @@ class Child {
     {
         $pro = new \Project($this->getChildProjectId());
         $formName = $this->getMainSurveyFormName();
-        $eventId = $this->getChildEventId($formName);
+        $eventId = $this->getEventId($this->getChildProjectId(), $formName);
         return REDCap::getSurveyLink($childRecordId, $formName, $eventId, 1, $this->getChildProjectId());
     }
 
@@ -274,8 +277,8 @@ class Child {
         return !empty($survey['form_name']) ? $survey['form_name'] : null;
     }
 
-    public function getChildEventId($formName){
-        $pro = new \Project($this->getChildProjectId());
+    public function getEventId($projectId, $formName){
+        $pro = new \Project($projectId);
         foreach($pro->eventsForms as $eventId => $event) {
             if(in_array($formName, $event))
                 return $eventId;
@@ -286,12 +289,26 @@ class Child {
     public function getSurveyTimestamp($childRecordId){
         $pro = new \Project($this->getChildProjectId());
         $formName = $this->getMainSurveyFormName();
-        $eventId = $this->getChildEventId($formName);
+        $eventId = $this->getEventId($this->getChildProjectId(), $formName);
 
         //Grab survey completion timestamp
         $survey_id = $pro->forms[$formName]['survey_id'];
         return Survey::isResponseCompleted($survey_id, $childRecordId, $eventId, 1, true);
+    }
 
+    public function getParentSurveyTimestamp($recordId){
+        $pro = new \Project($this->getParentProjectId());
+        $p = $this->parentSettings;
+        $sv = null;
+        foreach($pro->surveys as $surveyId => $survey) {
+            if($survey['form_name'] == $p['universal-survey-form-mutable']) {
+                $sv = $survey;
+            }
+        }
 
+        $formName = !empty($sv['form_name']) ? $sv['form_name'] : null;
+        $e = $this->getEventId($this->getParentProjectId(), $formName);
+        $survey_id = $pro->forms[$formName]['survey_id'];
+        return Survey::isResponseCompleted($survey_id, $recordId, $e, 1, true);
     }
 }
