@@ -671,13 +671,13 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             unset($completedIntake[$projectSettings['universal-survey-form-immutable'] . '_completed']);
             $mutableIntake['complete'] = $mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_complete'];
             unset($mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_completed']);
-
+            $current_user = $_SESSION['username'];
             return json_encode([
                 "surveys" => $this->generateSurveyTitles($payload['uid'], $requiredChildPIDs),
                 "completed_form_immutable" => $completedIntake,
                 "completed_form_mutable" => $mutableIntake,
                 "completed_form_pretty" => $pretty,
-                "mutable_url" => $mutableUrl,
+                "mutable_url" => "$mutableUrl&last_editing_user=$current_user",
                 "success" => true
             ]);
 
