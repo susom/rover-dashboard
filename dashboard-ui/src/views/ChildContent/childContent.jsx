@@ -101,14 +101,14 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     const renderChildModal = () => {
         const tab = {
             caption: 'Survey Details',
-            head: ['Variable', "Label", "Value"],
+            head: ["Label", "Value"],
             body: submissions[childSelected]?.completed_form_pretty
-                ? Object.entries(submissions[childSelected]?.completed_form_pretty).map(([key, v]) => [key, v.label, v.value || ""])
+                ? Object.entries(submissions[childSelected]?.completed_form_pretty).map(([key, v]) => [v.label, v.value || ""])
                 : [],
         }
 
         return (
-            <Table.ScrollContainer mah={800}>
+            <Table.ScrollContainer h="calc(80vh - 100px)">
                 <Table
                     stickyHeader
                     striped
@@ -122,6 +122,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         e.record_id,
         filterStatuses(e?.child_survey_complete),
         e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
+        e?.dashboard_submission_user ? e?.dashboard_submission_user : "N/A" ,
         renderInteraction(e)]
     )
 
@@ -187,11 +188,11 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             </Modal>
             <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
             {renderRequestButton()}
-            <Modal size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
+            <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
                 {childOpened && renderChildModal()}
             </Modal>
             <RequestTable
-                columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Survey Link']}
+                columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
                 body={body}
             />
         </div>
