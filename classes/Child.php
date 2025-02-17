@@ -168,8 +168,9 @@ class Child {
         }
 
         $record = $this->preCreateChildRecord($universalId);
+        $username = $_SESSION['username'];
         $url = REDCap::getSurveyLink($record, $first_survey['form_name'], $eventID, 1, $this->getChildProjectId(), false);
-        return $url;
+        return "$url&dashboard_submission_user=$username";
     }
 
     // Create new record in child project
