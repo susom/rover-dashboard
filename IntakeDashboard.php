@@ -161,6 +161,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
                     $child = new Child($this, $childProjectId, $parent_id, $pSettings);
+
+                    // Session data not included here, as only admins will be updating from this page, no need to pass last user to update
                     $child->updateParentData($record);
                 }
             }
@@ -652,8 +654,9 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     $mutableUrl = REDCap::getSurveyLink(reset($completedIntake)['record_id'], $survey['form_name'], $childEventId, 1, $parentId);
             }
 
-            //Grab survey completion timestamp
+            //Grab survey completion timestamps
             $survey_id = $project->forms[$projectSettings['universal-survey-form-immutable']]['survey_id'];
+            $survey_id_mutable = $project->forms[$projectSettings['universal-survey-form-mutable']]['survey_id'];
 
             // Reduce array
             $completedIntake = reset($completedIntake);
@@ -661,6 +664,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             //Manually add timestamp if completed
             $completedIntake['completion_ts'] = Survey::isResponseCompleted($survey_id, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
+            $completedIntake['completion_ts_mutable'] = Survey::isResponseCompleted($survey_id_mutable, $payload['uid'], $projectSettings['universal-survey-event'], 1, true);
 
             //Manually add agnostic completed variable if form changes for frontend logic
             $completedIntake['complete'] = $completedIntake[$projectSettings['universal-survey-form-immutable'] . '_complete'];
