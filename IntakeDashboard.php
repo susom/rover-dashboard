@@ -671,6 +671,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             unset($completedIntake[$projectSettings['universal-survey-form-immutable'] . '_completed']);
             $mutableIntake['complete'] = $mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_complete'];
             unset($mutableIntake[$projectSettings['universal-survey-form-mutable'] . '_completed']);
+
+            // Adding username to query link
             $current_user = $_SESSION['username'];
             return json_encode([
                 "surveys" => $this->generateSurveyTitles($payload['uid'], $requiredChildPIDs),
