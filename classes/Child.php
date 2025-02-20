@@ -24,12 +24,14 @@ class Child {
     {
         $childId = $this->getChildProjectId();
         $parentData = $this->prepareChildRecord($universalId);
+        $ts = $this->getParentSurveyTimestamp($universalId);
 
         if(!empty($parentData['universal_id'])){
             $parentData['universal_id'] = $parentData['record_id'];
             $parentData['record_id'] = $universalId;
         }
 
+        $parentData['univ_last_update'] = $ts;
         $parentData[$this->getPrimaryField()] = $currentChildRecordId;
         $res = REDCap::saveData($childId, 'json', json_encode([$parentData]), 'normal');
 

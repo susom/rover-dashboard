@@ -64,6 +64,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 <Button
                     size="xs"
                     color="green"
+                    variant="light"
                     component="a"
                     href={data.survey_url}
                     rightSection={<IconExternalLink size={20} />}
@@ -186,15 +187,17 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     >Confirm</Button>
                 </div>
             </Modal>
-            <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
-            {renderRequestButton()}
-            <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
-                {childOpened && renderChildModal()}
-            </Modal>
-            <RequestTable
-                columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
-                body={body}
-            />
+            <div style={{ position: 'relative' }}>
+                <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
+                {renderRequestButton()}
+                <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
+                    {childOpened && renderChildModal()}
+                </Modal>
+                <RequestTable
+                    columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
+                    body={body}
+                />
+            </div>
         </div>
 
     )
