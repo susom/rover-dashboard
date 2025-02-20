@@ -86,7 +86,6 @@ export function Dashboard() {
     }
 
     const toggleActiveCallback = (res) => {
-        console.log('inside callback', res)
         setIntakes((prevIntakes) => {
             return prevIntakes.map((item) => {
                 if (item.intake_id === res?.data?.record_id) {
