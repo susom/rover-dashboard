@@ -6,21 +6,19 @@ import {
     Group,
     Text,
     Table,
+    Flex,
+    Box,
     Modal,
     Button,
     Alert,
-    Badge,
     Timeline,
     Stack,
     Title,
-    Blockquote,
-    List,
     Divider, Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { IconBook, IconExternalLink, IconCheck } from '@tabler/icons-react';
+import { IconBook, IconExternalLink, IconCheck, IconX, IconInfoCircle } from '@tabler/icons-react';
 import {useNavigate, useParams} from "react-router-dom";
 import {ChildContent} from "../ChildContent/childContent.jsx";
 
@@ -172,39 +170,55 @@ export function IntakeDetail() {
 
     const renderChildSurveys = () => {
             return (
-                <Grid gutter="md">
-                    {/* Tabs */}
-                    <Grid.Col
-                        span={3}
-                        style={{
-                            backgroundColor: "#f8f9fa",
-                            padding: "20px",
-                            borderRadius: "8px",
-                        }}
-                    >
-                        <Stack spacing="md">
-                            {data?.map((tab) => (
-                                <Button
-                                    key={tab?.title}
-                                    variant={activeTab === tab.title ? "filled" : "light"}
-                                    fullWidth
-                                    onClick={() => setActiveTab(tab?.title)}
-                                >
-                                    {tab?.title}
-                                </Button>
-                            ))}
-                        </Stack>
-                    </Grid.Col>
+                <Card withBorder shadow="sm" radius="md">
+                    {/* Right side - Unified Intake Complete Box (larger) */}
+                    {detailMutable?.complete === "2" && (
+                        <Box mb="md" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
+                            <Alert radius="lg" variant="outline" color="blue" icon={<IconInfoCircle size={24} />}>
+                                <Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text>
+                                <Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text>
+                                <Text size="sm" fw={500}>Please ensure your Unified Intake details are correct prior to submitting a new request</Text>
+                                {/*<List>*/}
+                                {/*    <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text></List.Item>*/}
+                                {/*    <List.Item><Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text></List.Item>*/}
+                                {/*</List>*/}
+                            </Alert>
+                        </Box>
+                    )}
+                    <Grid gutter="md">
+                        {/* Tabs */}
+                        <Grid.Col
+                            span={3}
+                            style={{
+                                backgroundColor: "#f8f9fa",
+                                padding: "20px",
+                                borderRadius: "8px",
+                            }}
+                        >
+                            <Stack spacing="md">
+                                {data?.map((tab) => (
+                                    <Button
+                                        key={tab?.title}
+                                        variant={activeTab === tab.title ? "filled" : "light"}
+                                        fullWidth
+                                        onClick={() => setActiveTab(tab?.title)}
+                                    >
+                                        {tab?.title}
+                                    </Button>
+                                ))}
+                            </Stack>
+                        </Grid.Col>
 
-                    {/* Tab Content */}
-                    <Grid.Col span={9}>
-                        <Card shadow="sm" p="lg">
-                            <Card.Section>
-                                {data.length && renderContent()}
-                            </Card.Section>
-                        </Card>
-                    </Grid.Col>
-                </Grid>
+                        {/* Tab Content */}
+                        <Grid.Col span={9}>
+                            {/*<Card shadow="sm" p="lg">*/}
+                            {/*    <Card.Section>*/}
+                                    {data.length && renderContent()}
+                            {/*    </Card.Section>*/}
+                            {/*</Card>*/}
+                        </Grid.Col>
+                    </Grid>
+                </Card>
             )
     }
 
@@ -262,6 +276,36 @@ export function IntakeDetail() {
             </>
         );
     };
+    const card1 = () => {
+        return (
+            <Card withBorder shadow="sm" radius="md" my="sm">
+                <Flex justify="space-between" align="flex-start">
+                    <Box style={{ flex: 1 , minWidth: '350px'}}>
+                        <Timeline active={1} lineWidth={3} bulletSize={24}>
+                            <Timeline.Item
+                                bullet={detailMutable?.complete === "2" && detail?.intake_active !== "0" ? <IconCheck size={16} /> : <IconX size={16} />}
+                                title="Unified Intake Details"
+                                lineVariant="dashed"
+                                color={detailMutable?.complete === "2" && detail?.intake_active !== "0" ? "green" : "red"} // Change color dynamically
+                            >
+                                {detailMutable?.complete === "2" && detail?.intake_active !== "0" &&
+                                    <Text c="dimmed" size="sm">Last Edit: {detailMutable?.completion_ts} {detailMutable?.last_editing_user ? ` by ${detailMutable?.last_editing_user}`: ''}</Text>
+                                }
+                                {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
+                                    <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
+                                }
+                                <Group spacing="xs" align="center">
+                                    {renderMutableSection()}
+                                </Group>
+                            </Timeline.Item>
+                        </Timeline>
+                    </Box>
+                </Flex>
+            </Card>
+        )
+    }
+
+    const pi = detailMutable?.pi_f_name ? `Principal Investigator: ${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}` : '';
 
     return (
         <AppShell
@@ -278,104 +322,27 @@ export function IntakeDetail() {
                 }}
             >
                 {/* Header with button */}
-                <Group position="apart" align="center" mb="lg" noWrap style={{ width: '100%' }}>
-                    <div>
-                        <Title order={3}>Intake Detail</Title>
-                        <Text c="dimmed">Logged in as: {globalUsername}</Text>
+                <Group position="apart" align="center" noWrap style={{ width: '100%' }}>
+                    {/* Left Section */}
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                        <Title order={4}>{detailMutable?.research_title}</Title>
+                        <Text c="dimmed">UID #{detail?.record_id}</Text>
+                        <Text c="dimmed">{pi}</Text>
                     </div>
-                    <Button
-                        size="sm"
-                        color="blue"
-                        radius="md"
-                        component="a"
-                        onClick={() => navigate('/')}
-                        style={{ marginLeft: 'auto' }} // Ensure it aligns properly
-                    >
-                        Intake Home
-                    </Button>
+
+                    {/* Right Section - Moved to Right */}
+                    <div style={{ flex: 1, minWidth: '250px', textAlign: 'right' }}>
+                        <Title order={4}>Requester Details</Title>
+                        {detail?.completion_ts && <Text mb="3px" c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>}
+                        <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
+                    </div>
                 </Group>
-
-                {/* Project Info */}
-                <Blockquote
-                    color={detail?.intake_active === "0" ? "red" : "blue"}
-                    iconSize={36}
-                    mt="lg"
-                    radius="md"
-                    icon={<IconInfoCircle />}
-                >
-                    {detail?.intake_active === "0" &&
-                        <>
-                            <Group spacing="xs" align="center" mt="xs">
-                                <Text fw={700}>Intake Inactive</Text>
-                            </Group>
-                            <Group spacing="xs" align="center" mt="xs">
-                                <Text size="sm" c="dimmed">Intake deactivated by user:</Text>
-                                <Text size="sm" fw={700}>{detail?.deactivation_user}</Text>
-                                <Text size="sm" c="dimmed">on</Text>
-                                <Text size="sm" fw={700}>{detail?.active_change_date}</Text>
-                            </Group>
-                            <Group spacing="xs" align="center" mt="xs">
-                                <Text size="sm" c="dimmed">Reason:</Text>
-                                <Text size="sm" fw={700}>{detail?.deactivation_reason}</Text>
-                            </Group>
-                            <Divider mt="sm" mb="sm" size="sm" />
-                        </>
-                    }
-
-                    <Group spacing="xs" align="center" mt="xs">
-                        <Text size="sm" c="dimmed">Project Name:</Text>
-                        <Text size="sm" fw={700}>{detailMutable?.research_title}</Text>
-                    </Group>
-                    <Group spacing="xs" align="center" mt="xs">
-                        <Text size="sm" c="dimmed">Universal ID #:</Text>
-                        <Text size="sm" fw={700}>{detail?.record_id}</Text>
-                    </Group>
-                    <Group spacing="xs" align="center" mt="xs">
-                        <Text size="sm" c="dimmed">Principal Investigator:</Text>
-                        <Text size="sm" fw={700}>{`${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}`}</Text>
-                    </Group>
-                </Blockquote>
-                <Divider label="Unified Intake submissions" labelPosition="center" my="md" />
+                <Divider label="Unified Intake submission" labelPosition="center"  />
                 <Modal size="80%" opened={modalOpen} onClose={close} title="Requester Information">
                     {modalOpen && renderTable()}
                 </Modal>
-                <Card shadow="sm" p="lg" my="lg">
-                    <Timeline active={1} lineWidth={3} bulletSize={24}>
-                        <Timeline.Item bullet={<IconCheck size={16} />} title="Requester Information">
-                            {detail?.completion_ts && <Text c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>}
-                            <Group spacing="xs" align="center">
-                                <Text c="dimmed" size="sm">View prior survey submission:</Text>
-                                <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
-                            </Group>
-                        </Timeline.Item>
-                        <Timeline.Item bullet={detailMutable?.complete === "2" ? <IconCheck size={16} /> : ''} title="Unified Intake Submission" lineVariant="dashed">
-                            {detailMutable?.complete === "2" && detail?.intake_active !== "0" &&
-                                <Text c="dimmed" size="sm">Last Edit: {detailMutable?.completion_ts} by {detailMutable?.last_editing_user}</Text>
-                            }
-                            {detailMutable?.complete !== "2" && detail?.intake_active !== "0" &&
-                                <Text c="dimmed" size="sm">Please complete all required fields on the survey and click submit</Text>
-                            }
-                            <Group spacing="xs" align="center">
-                                {renderMutableSection()}
-                            </Group>
-                        </Timeline.Item>
-                        {/*<Timeline.Item title="Complete additional surveys required for requested services">*/}
-                        {/*    <Text c="dimmed" size="sm">Please complete each intake for the requested services below</Text>*/}
-                        {/*</Timeline.Item>*/}
-                    </Timeline>
-                    {detailMutable?.complete === "2" &&
-                        <Alert mt="md" variant="light" color="green" title="Unified Intake Complete!" icon={<IconCheck size={24} />}>
-                            <List>
-                                <List.Item><Text size="sm" fw={500}>Thank you for completing the Unified Intake Survey!</Text></List.Item>
-                                <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text></List.Item>
-                                <List.Item><Text size="sm" fw={500}>Providing this information in advance helps minimize duplication and helps streamline each team’s workflow.</Text></List.Item>
-                                <List.Item><Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text></List.Item>
-                            </List>
-                        </Alert>
-                    }
-
-                </Card>
-                <Divider label="Services" labelPosition="center" my="md" />
+                {card1()}
+                <Divider label="SHC Services" labelPosition="center" mb="sm" />
                 {renderChildSurveys()}
             </AppShell.Main>
         </AppShell>
