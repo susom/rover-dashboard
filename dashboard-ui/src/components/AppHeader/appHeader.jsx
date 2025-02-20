@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, Image } from '@mantine/core';
+import {Group, Image, Text} from '@mantine/core';
 
 export function AppHeader() {
     return (
@@ -11,7 +11,16 @@ export function AppHeader() {
                     fit="contain"
                     alt="stanford_image"
                 />
-                <p>Prototype</p>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',  // Ensures content stays centered within header height
+                    height: '100%'  // Inherit parent's height
+                }}>
+                    <p style={{ margin: 0 }}>Prototype</p>
+                    <Text c="dimmed" size="sm">Logged in as: {globalUsername}</Text>
+                </div>
             </Group>
 
     );
