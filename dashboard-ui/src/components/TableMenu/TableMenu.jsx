@@ -9,7 +9,6 @@ export function TableMenu({rowData, toggleSuccess, toggleError}){
     const [reason, setReason] = useState('')
     const [radioValue, setRadioValue] = useState(null)
     function onSuccess(response) {
-        console.log('Success:', response);
         close()
         toggleSuccess(response)
     }
