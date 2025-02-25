@@ -189,6 +189,8 @@ export function Dashboard() {
                 <Button
                     rightSection={<IconPlus size={20} />}
                     mb="md"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     component="a"
                     href={newRequestLink}
                 >New Request</Button>

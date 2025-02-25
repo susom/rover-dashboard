@@ -42,12 +42,14 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
 
     const successCallback = (res) => {
         if(res?.url){
-            window.open(res.url, "_self") //redirect to survey
+            window.open(res.url, "_blank") //redirect to survey
         }
+        close();
     }
 
     const errorCallback = (err) => {
         console.log(err)
+        close();
     }
 
     const onClick = (e) => {
@@ -66,6 +68,8 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     color="green"
                     variant="light"
                     component="a"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={data.survey_url}
                     rightSection={<IconExternalLink size={20} />}
                 >
