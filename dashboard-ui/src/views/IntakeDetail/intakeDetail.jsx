@@ -12,9 +12,12 @@ import {
     Button,
     Alert,
     Timeline,
+    Breadcrumbs,
+    Anchor,
     Stack,
     Title,
-    Divider, Tooltip,
+    Divider,
+    Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
@@ -267,6 +270,8 @@ export function IntakeDetail() {
                     color="green"
                     rightSection={<IconExternalLink size={16} />}
                     component="a"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={mutableUrl}
                     variant="light"
                     size="xs"
@@ -322,11 +327,17 @@ export function IntakeDetail() {
                 }}
             >
                 {/* Header with button */}
+                <Group mb="xs">
+                    <Breadcrumbs>
+                        <Anchor onClick={() => navigate("/")}>Home</Anchor>
+                        <Anchor onClick={() => navigate(`/detail/${params.id}`)} >Detail</Anchor>
+                    </Breadcrumbs>
+                </Group>
                 <Group position="apart" align="center" noWrap style={{ width: '100%' }}>
                     {/* Left Section */}
                     <div style={{ flex: 1, minWidth: '300px' }}>
                         <Title order={4}>{detailMutable?.research_title}</Title>
-                        <Text c="dimmed">UID #{detail?.record_id}</Text>
+                        <Text c="dimmed">ID: {detail?.record_id}</Text>
                         <Text c="dimmed">{pi}</Text>
                     </div>
 
