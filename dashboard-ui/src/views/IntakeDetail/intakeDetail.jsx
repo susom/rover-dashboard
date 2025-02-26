@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     AppShell,
     Card,
@@ -12,6 +12,7 @@ import {
     Button,
     Alert,
     Timeline,
+    Indicator,
     Breadcrumbs,
     Anchor,
     Stack,
@@ -37,7 +38,8 @@ export function IntakeDetail() {
     const params = useParams()
     const navigate = useNavigate();
     const [modalOpen, { open, close }] = useDisclosure(false);
-    const [pretty, setPretty] = useState("")
+    const [pretty, setPretty] = useState([])
+    const [currentModalData, setCurrentModalData] = useState([])
 
     const nextStep = () =>
         setActiveStep((current) => (current < overallSteps.length - 1 ? current + 1 : current));
@@ -51,7 +53,7 @@ export function IntakeDetail() {
         }
         setDetail(res?.completed_form_immutable)
         setDetailMutable(res?.completed_form_mutable)
-        setPretty(res?.completed_form_pretty)
+        setPretty(res?.completed_form_pretty) // Array of two [immutable, mutable]
         setmutableUrl(res?.mutable_url)
         setIsLoading(false);
     }
@@ -63,59 +65,12 @@ export function IntakeDetail() {
 
     // Stubbed dynamic data
     useEffect(() => {
-
         let jsmoModule;
         if (import.meta?.env?.MODE !== 'development')
             jsmoModule = ExternalModules.Stanford.IntakeDashboard;
 
         jsmoModule.getUserDetail({'username': globalUsername, 'uid': params?.id}, successCallback, errorCallback)
-
-
-        // Simulating async data fetching
-        // setTimeout(() => {
-        //     setData({
-        //         projectInfo: {
-        //             name: "Research Study 1",
-        //             acronym: "RS1",
-        //             irbNumber: "123456789",
-        //             oncoreNumber: "987654321",
-        //         },
-        //         tabs: [
-        //             { name: "IDS Intake", content: "This is the content for IDS Intake." },
-        //             { name: "Radiology Intake", content: "Radiology Intake-specific information goes here." },
-        //             { name: "Lab Intake", content: "Lab Intake-related content goes here." },
-        //         ],
-        //         overallSteps: [
-        //             "Feasibility",
-        //             "Pricing",
-        //             "Docs/Outputs",
-        //             "Approval",
-        //             "Finalized",
-        //         ],
-        //         tabLinks: {
-        //             "IDS Intake": [
-        //                 { label: "Step 1: Complete this intake", completed: true, link: "#" },
-        //                 { label: "Step 2: Upload documents", completed: false, link: "#" },
-        //                 { label: "Step 3: Review approvals", completed: true, link: "#" },
-        //             ],
-        //             "Radiology Intake": [
-        //                 { label: "Step 1: Fill intake form", completed: true, link: "#" },
-        //                 { label: "Step 2: Verify patient data", completed: false, link: "#" },
-        //             ],
-        //             "Lab Intake": [
-        //                 { label: "Step 1: Initiate lab test", completed: false, link: "#" },
-        //                 { label: "Step 2: Submit samples", completed: true, link: "#" },
-        //             ],
-        //         },
-        //         user: {
-        //             username: "irvins",
-        //             intakesDashboardLink: "/my-intakes-dashboard", // Dynamic link
-        //         },
-        //     });
-        //     setActiveTab("IDS Intake"); // Default to first tab
-        //     setIsLoading(false);
-        // }, 500); // Simulate async call
-    }, []);
+    }, [globalUsername, params]);
 
     if (isLoading || !data) {
         return (
@@ -134,21 +89,31 @@ export function IntakeDetail() {
     }
 
     const renderTable = () => {
-        const tab = {
-            caption: 'Survey Details',
-            head: ["Label", "Value"],
-            body: pretty
-                ? Object.entries(pretty).map(([key, v]) => [v.label, v.value || ""])
-                : [],
-        }
-
+        const highlight = ["Protocol Title", "IRB Number", "PTA Number", "SPO Number", "OnCore Number", ]
         return (
             <Table.ScrollContainer h={520}>
-                <Table
-                    stickyHeader
-                    striped
-                    data={tab}
-                />
+                <Table stickyHeader striped>
+                    <Table.Thead>
+                        <Table.Tr>
+                            <Table.Th>Label</Table.Th>
+                            <Table.Th>Value</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {currentModalData &&
+                            Object.entries(currentModalData).map(([key, v]) => (
+                                <Table.Tr
+                                    key={key}
+                                    style={{
+                                        backgroundColor: highlight.includes(v.label) && !v.value.length  ? "#ffeb3b" : "inherit",
+                                    }}
+                                >
+                                    <Table.Td>{v.label}</Table.Td>
+                                    <Table.Td>{v.value || ""}</Table.Td>
+                                </Table.Tr>
+                            ))}
+                    </Table.Tbody>
+                </Table>
             </Table.ScrollContainer>
         );
     }
@@ -181,10 +146,6 @@ export function IntakeDetail() {
                                 <Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text>
                                 <Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text>
                                 <Text size="sm" fw={500}>Please ensure your Unified Intake details are correct prior to submitting a new request</Text>
-                                {/*<List>*/}
-                                {/*    <List.Item><Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text></List.Item>*/}
-                                {/*    <List.Item><Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text></List.Item>*/}
-                                {/*</List>*/}
                             </Alert>
                         </Box>
                     )}
@@ -266,18 +227,21 @@ export function IntakeDetail() {
         ) : (
             <>
                 <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                <Button
-                    color="green"
-                    rightSection={<IconExternalLink size={16} />}
-                    component="a"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={mutableUrl}
-                    variant="light"
-                    size="xs"
-                >
-                    Edit
-                </Button>
+                    <Indicator disabled={!checkMutableIncomplete()} inline processing color="red" size={12}>
+                        <Button rightSection={<IconBook size={16} />} onClick={() => clickHandler(1)} variant="light" size="xs">View</Button>
+                    </Indicator>
+                    <Button
+                        color="green"
+                        rightSection={<IconExternalLink size={16} />}
+                        component="a"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={mutableUrl}
+                        variant="light"
+                        size="xs"
+                    >
+                        Edit
+                    </Button>
             </>
         );
     };
@@ -312,6 +276,26 @@ export function IntakeDetail() {
 
     const pi = detailMutable?.pi_f_name ? `Principal Investigator: ${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}` : '';
 
+    const checkMutableIncomplete = () => {
+        const highlight = ["Protocol Title", "IRB Number", "PTA Number", "SPO Number", "OnCore Number"];
+
+        return pretty[1]
+            ? Object.values(pretty[1]).some(v => {
+                return highlight.includes(v.label) && !v.value.trim();
+            })
+            : false;
+    }
+
+    const clickHandler = (type) => {
+        if(type === 0)
+            setCurrentModalData(pretty[0])
+        else
+            setCurrentModalData(pretty[1])
+        if(pretty.length)
+            open()
+    }
+
+
     return (
         <AppShell
             padding="md"
@@ -345,7 +329,7 @@ export function IntakeDetail() {
                     <div style={{ flex: 1, minWidth: '250px', textAlign: 'right' }}>
                         <Title order={4}>Requester Details</Title>
                         {detail?.completion_ts && <Text mb="3px" c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>}
-                        <Button rightSection={<IconBook size={16} />} onClick={open} variant="light" size="xs">View</Button>
+                        <Button rightSection={<IconBook size={16} />} onClick={() => clickHandler(0)} variant="light" size="xs">View</Button>
                     </div>
                 </Group>
                 <Divider label="Unified Intake submission" labelPosition="center"  />
