@@ -641,10 +641,13 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
 
             //Parse fields & convert labels for UI render of submitted form
-            $pretty = $completedIntake[0];
+            $pretty_immutable = $completedIntake[0];
+            $pretty_mutable = $mutableIntake[0];
             $excluded = ["requester_lookup", "pi_lookup", "one_lookup", "webauth_user"];
+
             $du = new DashboardUtil($this, $projectSettings);
-            $pretty = $du->prepareFieldsForRender($parentId, $pretty, $excluded);
+            $pretty_immutable = $du->prepareFieldsForRender($parentId, $pretty_immutable, $excluded);
+            $pretty_mutable = $du->prepareFieldsForRender($parentId, $pretty_mutable, $excluded);
 
             $childSurveys = $project->surveys;
             $mutableUrl = [];
@@ -678,7 +681,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 "surveys" => $this->generateSurveyTitles($payload['uid'], $requiredChildPIDs),
                 "completed_form_immutable" => $completedIntake,
                 "completed_form_mutable" => $mutableIntake,
-                "completed_form_pretty" => $pretty,
+                "completed_form_pretty" => [$pretty_immutable, $pretty_mutable],
                 "mutable_url" => "$mutableUrl&last_editing_user=$current_user",
                 "success" => true
             ]);
