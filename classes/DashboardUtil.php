@@ -2,6 +2,7 @@
 
 namespace Stanford\IntakeDashboard;
 use REDCap;
+use Files;
 
 class DashboardUtil
 {
@@ -77,6 +78,64 @@ class DashboardUtil
 
         // Output the parsed array
         return $parsedArray;
+    }
+
+    /**
+     * Returns the Google cloud storage bucket name used to store files on production
+     * @return ?string
+     */
+    public function getStorageBucketName(){
+        $sql = "select * from redcap_config where field_name ='" . "google_cloud_storage_api_bucket_name". "'";
+        $q = db_query($sql);
+        return db_fetch_assoc($q)['value'] ?? null;
+    }
+
+    /**
+     * Returns file metadata from edocs
+     * @param $docId
+     * @param $projectId
+     * @return mixed|null
+     */
+    public function getFileMetadata($docId, $projectId){
+        if(empty($docId) || empty($projectId)){
+            return null;
+        }
+
+        $sql = "select * from redcap_edocs_metadata where doc_id = '" . db_escape($docId). "' and (delete_date is null or (delete_date is not null and delete_date > '".NOW."'))"; // Allow future delete dates
+        $sql .= " and project_id = " . $projectId;
+        $q = db_query($sql);
+        return db_fetch_assoc($q);
+    }
+
+    /**
+     * Downloads a file to temp directory from localhost
+     * @param $docMetadata
+     * @param $parentId
+     * @return boolean
+     */
+    public function downloadLocalhostFile($docMetadata, $parentId){
+        $local_file = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
+        if (file_exists($local_file) && is_file($local_file)) {
+            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
+
+            // Open remote file for reading and local file for writing
+            $remoteFile = fopen($local_file, 'rb'); // Read in binary mode
+            $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
+
+            if ($remoteFile && $localFile) {
+                while (!feof($remoteFile)) {
+                    fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
+                }
+                fclose($remoteFile);
+                fclose($localFile);
+                $this->getModule()->emLog("File saved to: " . $localSavePath);
+                return true;
+            } else {
+                $this->getModule()->emLog("Failed to open file for reading/writing.");
+                return false;
+            }
+        }
+        return false;
     }
 
     private function setModule($module)

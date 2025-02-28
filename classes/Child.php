@@ -2,6 +2,7 @@
 namespace Stanford\IntakeDashboard;
 use REDCap;
 use Survey;
+use Files;
 
 class Child {
     private $module;
@@ -313,5 +314,82 @@ class Child {
         $e = $this->getEventId($this->getParentProjectId(), $formName);
         $survey_id = $pro->forms[$formName]['survey_id'];
         return Survey::isResponseCompleted($survey_id, $recordId, $e, 1, true);
+    }
+
+    /**
+     * @return integer
+     */
+    public function copyFileFromParent($docMetadata, $fieldName, $record){
+        $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
+        if(!file_exists($localSavePath)){
+            return 0;
+        }
+
+        $doc_size = filesize($localSavePath);
+        $mime_type = $docMetadata['mime_type'];
+        $doc_name = $docMetadata['doc_name'];
+
+        // If not an allowed file extension, then prevent uploading the file and return "0" to denote error
+        if (!Files::fileTypeAllowed($docMetadata['doc_name'])) {
+            unlink($localSavePath);
+            $this->getModule()->emError("File type not allowed for upload.");
+            return 0;
+        }
+
+        if(($doc_size/1024/1024) > maxUploadSizeEdoc()){
+            unlink($localSavePath);
+            $this->getModule()->emError("File size exceeds maxUploadSizeEdoc.");
+            return 0;
+        }
+
+        $childId = $this->getChildProjectId();
+        $file_extension = getFileExt($docMetadata['doc_name']);
+        $stored_name = date('YmdHis') . "_pid" . ($childId ?: "0") . "_" . generateRandomHash(6) . getFileExt($docMetadata['doc_name'], true);
+        $result = 0;
+        //Save the data in the correct child location in edocs
+        if (file_put_contents(EDOC_PATH . \Files::getLocalStorageSubfolder($this->getChildProjectId(), true) . $stored_name, file_get_contents($localSavePath))) {
+            unlink($localSavePath);
+            $result = 1;
+        }
+
+        if($result){
+            $docId = $this->updateEdocsMetadata($stored_name, $mime_type, $doc_name, $doc_size, $file_extension);
+            if($docId){ //Updated successfully
+                $res = $this->updateEdocsDataMapping($docId, $record, $fieldName);
+                $res = $this->updateRedcapData($docId, $record, $fieldName);
+            }
+
+        } else {
+            return 0; //Failed
+        }
+
+    }
+    public function updateEdocsMetadata($storedName, $mimeType, $docName, $docSize, $fileExtension){
+        $childId = $this->getChildProjectId();
+        // Add file info the redcap_edocs_metadata table for retrieval later
+        $q = db_query("INSERT INTO redcap_edocs_metadata (stored_name, mime_type, doc_name, doc_size, file_extension, project_id, stored_date)
+						  VALUES ('" . db_escape($storedName) . "', '" . db_escape($mimeType) . "', '" . db_escape($docName) . "',
+						  '" . db_escape($docSize) . "', '" . db_escape($fileExtension) . "',
+						  " . ($childId ?: "null") . ", '".NOW."')");
+
+        return (!$q ? 0 : db_insert_id());
+    }
+
+    public function updateEdocsDataMapping($docId, $record, $fieldName){
+        $pSettings = $this->getParentSettings();
+        $childId = $this->getChildProjectId();
+        $q = db_query("INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
+               VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '45',
+                       '" . db_escape($record) . "', '" . db_escape($fieldName) . "', '1')");
+        return 1;
+    }
+
+    public function updateRedcapData($docId, $record, $fieldName){
+        $pSettings = $this->getParentSettings();
+        $childId = $this->getChildProjectId();
+        $q = db_query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value, instance)
+               VALUES ('" . db_escape($childId) . "', '45', '" . db_escape($record) . "', 
+                       '" . db_escape($fieldName) . "', '" . db_escape($docId) . "', NULL)");
+        return 1;
     }
 }
