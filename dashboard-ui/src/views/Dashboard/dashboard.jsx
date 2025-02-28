@@ -38,34 +38,11 @@ export function Dashboard() {
     }, [])
 
     const fetchIntakes = () => {
-        const useFakeData = false; // Set this to false to fetch real data
-
-        if (useFakeData) {
-            // Fake data for testing, remove this block when using real data
-            toggle();
-            setIntakes([
-                {
-                    intake_id: "12345",
-                    type: "Survey",
-                    research_title: "Sample Study 1",
-                    pi_name: "Dr. John Doe",
-                    intake_complete: "Incomplete",
-                },
-                {
-                    intake_id: "67890",
-                    type: "Interview",
-                    research_title: "Sample Study 2",
-                    pi_name: "Dr. Jane Smith",
-                    intake_complete: "Complete",
-                },
-            ]);
-        } else {
-            // Real data fetching
-            let jsmoModule;
-            if (import.meta?.env?.MODE !== 'development')
-                jsmoModule = ExternalModules.Stanford.IntakeDashboard;
-            jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
-        }
+        // Real data fetching
+        let jsmoModule;
+        if (import.meta?.env?.MODE !== 'development')
+            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+        jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
     };
 
     const transition = (id) => {
@@ -209,6 +186,7 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
+                            className="main-table"
                             data={tableData}
                         />
                         <Pagination
@@ -236,6 +214,7 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
+                            className="main-table"
                             data={finishedTable}
                         />
                         <Pagination

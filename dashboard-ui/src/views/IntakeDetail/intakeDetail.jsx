@@ -126,13 +126,11 @@ export function IntakeDetail() {
 
         })
             return (
-                <>
-                    <ChildContent
-                        immutableParentInfo={detail}
-                        mutableParentInfo={detailMutable}
-                        childInfo={act}
-                    />
-                </>
+                <ChildContent
+                    immutableParentInfo={detail}
+                    mutableParentInfo={detailMutable}
+                    childInfo={act}
+                />
             )
     }
 
@@ -175,11 +173,7 @@ export function IntakeDetail() {
 
                         {/* Tab Content */}
                         <Grid.Col span={9}>
-                            {/*<Card shadow="sm" p="lg">*/}
-                            {/*    <Card.Section>*/}
-                                    {data.length && renderContent()}
-                            {/*    </Card.Section>*/}
-                            {/*</Card>*/}
+                            {data.length && renderContent()}
                         </Grid.Col>
                     </Grid>
                 </Card>

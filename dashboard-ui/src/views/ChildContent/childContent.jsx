@@ -103,7 +103,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             return "Complete"
     }
 
-    const renderChildModal = () => {
+    const renderChildViewModal = () => {
         const tab = {
             caption: 'Survey Details',
             head: ["Label", "Value"],
@@ -113,7 +113,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
 
         return (
-            <Table.ScrollContainer h="calc(80vh - 100px)">
+            <Table.ScrollContainer scrollbars="y" h="calc(80vh - 100px)">
                 <Table
                     stickyHeader
                     striped
@@ -191,11 +191,11 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     >Confirm</Button>
                 </div>
             </Modal>
-            <div style={{ position: 'relative' }}>
+            <div>
                 <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
                 {renderRequestButton()}
                 <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
-                    {childOpened && renderChildModal()}
+                    {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
                     columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
