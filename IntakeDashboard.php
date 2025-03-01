@@ -155,16 +155,59 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         //Functionality here serves to update child records in case edits are made on data-entry page (doesn't trigger survey complete hook)
         if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
             $parent_id = $this->getSystemSetting('parent-project');
-
+            $successFileMetadata = [];
             if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
                 $pSettings = $this->getProjectSettings($parent_id);
+                $util = new DashboardUtil($this, $pSettings);
+                $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
 
+                foreach($file_fields as $variable => $docId) {
+                    if (!empty($docId)) { //If there exists a file uploaded to one of the document fields
+                        $thisFile = $util->getFileMetadata($docId, $parent_id); //Current processed file
+                        $storageName = $util->getStorageBucketName();
+                        if (!empty($storageName) && !empty($thisFile)) { //Have a bucket name , production server
+                            // TODO: Implement this for googleCloud bucket storage
+//                    $googleClient = Files::googleCloudStorageClient();
+//                    $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
+//                    $googleClient->registerStreamWrapper();
+//
+//                    $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $this_file['stored_name'];
+//                    $localSavePath = __DIR__  . $this_file['doc_name']; // Adjust directory as needed
+//                    // Open remote file for reading and local file for writing
+//                    $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
+//                    $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
+//
+//                    if ($remoteFile && $localFile) {
+//                        while (!feof($remoteFile)) {
+//                            fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
+//                        }
+//                        fclose($remoteFile);
+//                        fclose($localFile);
+//                        $this->emLog("File saved to: " . $localSavePath);
+//                    } else {
+//                        $this->emError("File not saved to: " . $localSavePath . " Failed to open file for reading/writing");
+//                        echo "Failed to open file for reading/writing.";
+//                    }
+
+                        } else { //Localhost, serve from internal location
+                            if ($util->downloadLocalhostFileToTemp($thisFile, $parent_id)) {
+                                $successFileMetadata[$variable] = $thisFile;
+                            }
+                        }
+                    }
+                }
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
                     $child = new Child($this, $childProjectId, $parent_id, $pSettings);
 
                     // Session data not included here, as only admins will be updating from this page, no need to pass last user to update
                     $child->updateParentData($record);
+
+                    if(count($successFileMetadata) > 0){
+                        foreach($successFileMetadata as $variable => $fileMetadata){
+                            $child->copyFileFromParent($fileMetadata, $variable, $record);
+                        }
+                    }
                 }
             }
         }
@@ -642,43 +685,43 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 //            $file = file_get_contents($full);
 
 //GOOGLE DEF will remove from this function later.
-            if($mutableIntake[0]['protocol_upload']){ // If docID exists for instrument
-                $util = new DashboardUtil($this, $projectSettings);
-                $storageName = $util->getStorageBucketName();
-                $this_file = $util->getFileMetadata($mutableIntake[0]['protocol_upload'], $parentId);
-
-                if(!empty($storageName) && !empty($this_file)){ //Have a bucket name , production server
-                    // TODO: Implement this for googleCloud bucket storage
-                    $googleClient = Files::googleCloudStorageClient();
-                    $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
-                    $googleClient->registerStreamWrapper();
-
-                    $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $this_file['stored_name'];
-                    $localSavePath = __DIR__  . $this_file['doc_name']; // Adjust directory as needed
-                    // Open remote file for reading and local file for writing
-                    $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
-                    $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
-
-                    if ($remoteFile && $localFile) {
-                        while (!feof($remoteFile)) {
-                            fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
-                        }
-                        fclose($remoteFile);
-                        fclose($localFile);
-                        $this->emLog("File saved to: " . $localSavePath);
-                    } else {
-                        $this->emError("File not saved to: " . $localSavePath . " Failed to open file for reading/writing");
-                        echo "Failed to open file for reading/writing.";
-                    }
-
-                } else { //Localhost, serve from internal location
-                    $res = $util->downloadLocalhostFile($this_file, $parentId);
-                    if($res){
-                        $child = new Child($this, "17", $parentId, $projectSettings);
-                        $child->copyFileFromParent($this_file, "protocol_upload", "10",);
-                    }
-                }
-            }
+//            if($mutableIntake[0]['protocol_upload']){ // If docID exists for instrument
+//                $util = new DashboardUtil($this, $projectSettings);
+//                $storageName = $util->getStorageBucketName();
+//                $this_file = $util->getFileMetadata($mutableIntake[0]['protocol_upload'], $parentId);
+//
+//                if(!empty($storageName) && !empty($this_file)){ //Have a bucket name , production server
+//                    // TODO: Implement this for googleCloud bucket storage
+//                    $googleClient = Files::googleCloudStorageClient();
+//                    $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
+//                    $googleClient->registerStreamWrapper();
+//
+//                    $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $this_file['stored_name'];
+//                    $localSavePath = __DIR__  . $this_file['doc_name']; // Adjust directory as needed
+//                    // Open remote file for reading and local file for writing
+//                    $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
+//                    $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
+//
+//                    if ($remoteFile && $localFile) {
+//                        while (!feof($remoteFile)) {
+//                            fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
+//                        }
+//                        fclose($remoteFile);
+//                        fclose($localFile);
+//                        $this->emLog("File saved to: " . $localSavePath);
+//                    } else {
+//                        $this->emError("File not saved to: " . $localSavePath . " Failed to open file for reading/writing");
+//                        echo "Failed to open file for reading/writing.";
+//                    }
+//
+//                } else { //Localhost, serve from internal location
+//                    $res = $util->downloadLocalhostFile($this_file, $parentId);
+//                    if($res){
+//                        $child = new Child($this, "17", $parentId, $projectSettings);
+//                        $child->copyFileFromParent($this_file, "protocol_upload", "10",);
+//                    }
+//                }
+//            }
 
 
 // GOOGLE DEF

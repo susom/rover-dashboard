@@ -113,7 +113,7 @@ class DashboardUtil
      * @param $parentId
      * @return boolean
      */
-    public function downloadLocalhostFile($docMetadata, $parentId){
+    public function downloadLocalhostFileToTemp($docMetadata, $parentId){
         $local_file = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
         if (file_exists($local_file) && is_file($local_file)) {
             $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
@@ -128,14 +128,25 @@ class DashboardUtil
                 }
                 fclose($remoteFile);
                 fclose($localFile);
-                $this->getModule()->emLog("File saved to: " . $localSavePath);
+                $this->getModule()->emDebug("File saved to: " . $localSavePath);
                 return true;
             } else {
-                $this->getModule()->emLog("Failed to open file for reading/writing.");
+                $this->getModule()->emDebug("Failed to open file for reading/writing.");
                 return false;
             }
         }
         return false;
+    }
+
+    public function determineFileUploadFieldValues($projectId, $recordId){
+        $queryParams = [
+            "return_format" => "json",
+            "project_id" => $projectId,
+            "fields" => ['protocol_upload', 'investigators_brochure', 'informed_consent', 'other_docs'],
+            "records" => $recordId
+        ];
+        $parentFiles = json_decode(REDCap::getData($queryParams), true);
+        return reset($parentFiles);
     }
 
     private function setModule($module)

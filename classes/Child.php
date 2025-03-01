@@ -316,10 +316,29 @@ class Child {
         return Survey::isResponseCompleted($survey_id, $recordId, $e, 1, true);
     }
 
+    public function updateParentFiles($recordId){
+        if($this->getChildProjectId() !== "17") //Temp for testing
+            return;
+
+        $queryParams = [
+            "return_format" => "json",
+            "project_id" => $this->getParentProjectId(),
+            "fields" => ['protocol_upload', 'investigators_brochure', 'informed_consent', 'other_docs'],
+            "records" => $recordId
+        ];
+        $parentFiles = json_decode(REDCap::getData($queryParams), true);
+        $parentFiles = reset($parentFiles);
+
+        $children = $this->childRecordExists($recordId);
+    }
+
+
     /**
      * @return integer
      */
-    public function copyFileFromParent($docMetadata, $fieldName, $record){
+    public function copyFileFromParent($docMetadata, $fieldName, $recordId){
+        if($this->getChildProjectId() !== "18")
+            return 0;
         $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
         if(!file_exists($localSavePath)){
             return 0;
@@ -328,6 +347,8 @@ class Child {
         $doc_size = filesize($localSavePath);
         $mime_type = $docMetadata['mime_type'];
         $doc_name = $docMetadata['doc_name'];
+        $childId = $this->getChildProjectId();
+        $file_extension = getFileExt($docMetadata['doc_name']);
 
         // If not an allowed file extension, then prevent uploading the file and return "0" to denote error
         if (!Files::fileTypeAllowed($docMetadata['doc_name'])) {
@@ -336,36 +357,40 @@ class Child {
             return 0;
         }
 
+        // If filesize is too large, exit
         if(($doc_size/1024/1024) > maxUploadSizeEdoc()){
             unlink($localSavePath);
             $this->getModule()->emError("File size exceeds maxUploadSizeEdoc.");
             return 0;
         }
 
-        $childId = $this->getChildProjectId();
-        $file_extension = getFileExt($docMetadata['doc_name']);
-        $stored_name = date('YmdHis') . "_pid" . ($childId ?: "0") . "_" . generateRandomHash(6) . getFileExt($docMetadata['doc_name'], true);
-        $result = 0;
-        //Save the data in the correct child location in edocs
-        if (file_put_contents(EDOC_PATH . \Files::getLocalStorageSubfolder($this->getChildProjectId(), true) . $stored_name, file_get_contents($localSavePath))) {
-            unlink($localSavePath);
-            $result = 1;
-        }
-
-        if($result){
-            $docId = $this->updateEdocsMetadata($stored_name, $mime_type, $doc_name, $doc_size, $file_extension);
-            if($docId){ //Updated successfully
-                $res = $this->updateEdocsDataMapping($docId, $record, $fieldName);
-                $res = $this->updateRedcapData($docId, $record, $fieldName);
+        $childRecords = $this->childRecordExists($recordId);
+        foreach($childRecords as $childRecord){ //Iterate through each record in the child project that has a matching universal ID to parent
+            $stored_name = date('YmdHis') . "_pid" . ($childId ?: "0") . "_" . generateRandomHash(6) . getFileExt($docMetadata['doc_name'], true);
+            $result = 0;
+            //Save the data in the correct child location in edocs
+            if (file_put_contents(EDOC_PATH . \Files::getLocalStorageSubfolder($childId, true) . $stored_name, file_get_contents($localSavePath))) {
+                $result = 1;
             }
 
-        } else {
-            return 0; //Failed
+            if($result){
+                $docId = $this->updateEdocsMetadata($stored_name, $mime_type, $doc_name, $doc_size, $file_extension);
+                if($docId){ //Updated successfully
+                    $res = $this->updateEdocsDataMapping($docId, $childRecord['record_id'], $fieldName);
+                    $res = $this->updateRedcapData($docId, $childRecord['record_id'], $fieldName);
+                    return 1;
+                }
+                return 0;
+            } else {
+                return 0; //Failed
+            }
         }
 
     }
     public function updateEdocsMetadata($storedName, $mimeType, $docName, $docSize, $fileExtension){
         $childId = $this->getChildProjectId();
+        $this->getModule()->emLog("Updating redcap_edocs_metadata with values: $storedName, $mimeType, $docName, $docSize, $fileExtension, $childId");
+
         // Add file info the redcap_edocs_metadata table for retrieval later
         $q = db_query("INSERT INTO redcap_edocs_metadata (stored_name, mime_type, doc_name, doc_size, file_extension, project_id, stored_date)
 						  VALUES ('" . db_escape($storedName) . "', '" . db_escape($mimeType) . "', '" . db_escape($docName) . "',
@@ -375,20 +400,27 @@ class Child {
         return (!$q ? 0 : db_insert_id());
     }
 
-    public function updateEdocsDataMapping($docId, $record, $fieldName){
-        $pSettings = $this->getParentSettings();
+    public function updateEdocsDataMapping($docId, $childRecordId, $fieldName){
         $childId = $this->getChildProjectId();
+        $pSettings = $this->getParentSettings();
+        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+        $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+
         $q = db_query("INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
-               VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '45',
-                       '" . db_escape($record) . "', '" . db_escape($fieldName) . "', '1')");
+               VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', db_escape($eventId),
+                       '" . db_escape($childRecordId) . "', '" . db_escape($fieldName) . "', '1')");
         return 1;
     }
 
-    public function updateRedcapData($docId, $record, $fieldName){
-        $pSettings = $this->getParentSettings();
+    public function updateRedcapData($docId, $childRecordId, $fieldName){
         $childId = $this->getChildProjectId();
-        $q = db_query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value, instance)
-               VALUES ('" . db_escape($childId) . "', '45', '" . db_escape($record) . "', 
+        $pSettings = $this->getParentSettings();
+        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+        $dataTable = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($childId) : "redcap_data";
+        $this->getModule()->emLog("Updating $dataTable with values: $childId, $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
+
+        $q = db_query("INSERT INTO " . db_escape($dataTable) . " (project_id, event_id, record, field_name, value, instance)
+               VALUES ('" . db_escape($childId) . "', db_escape($eventId), '" . db_escape($childRecordId) . "', 
                        '" . db_escape($fieldName) . "', '" . db_escape($docId) . "', NULL)");
         return 1;
     }
