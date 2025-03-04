@@ -98,9 +98,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
 
     const filterStatuses = (num) => {
         if(num === "0")
-            return "Incomplete"
+            return "Incomplete Submission"
         else if(num === "2")
-            return "Complete"
+            return "Submitted"
     }
 
     const renderChildViewModal = () => {
@@ -198,7 +198,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
-                    columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
+                    columns={['Child ID', 'Submission Status', 'Submission Timestamp', 'Submitted By','Survey Link']}
                     body={body}
                 />
             </div>
