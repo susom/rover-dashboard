@@ -107,43 +107,138 @@ class DashboardUtil
         return db_fetch_assoc($q);
     }
 
+    public function isWithinTimeRange($storedDate, $rangeInSeconds = 120) {
+        $timestamp = strtotime($storedDate); // Convert to timestamp
+        return abs(time() - $timestamp) <= $rangeInSeconds;
+    }
+
     /**
      * Downloads a file to temp directory from localhost
      * @param $docMetadata
      * @param $parentId
      * @return boolean
      */
-    public function downloadLocalhostFileToTemp($docMetadata, $parentId){
-        $local_file = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
-        $timestamp = strtotime($docMetadata['stored_date']); // Convert to timestamp
-        $currentTime = time(); // Get current timestamp
-
-        // Check if the current time is within 2 minutes (120 seconds) of the storage date
-        // This check is used to prevent copying files to children when the user has not uploaded a new file
-        if (!(abs($currentTime - $timestamp) <= 120))
+    public function downloadLocalhostFileToTemp($docMetadata, $parentId): bool
+    {
+        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
             return false;
 
-        if (file_exists($local_file) && is_file($local_file)) {
-            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
+        $sourceFile = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
+        $destination = APP_PATH_TEMP . $docMetadata['doc_name'];
 
-            // Open remote file for reading and local file for writing
-            $remoteFile = fopen($local_file, 'rb'); // Read in binary mode
-            $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
+        return $this->downloadFile($sourceFile, $destination);
 
-            if ($remoteFile && $localFile) {
-                while (!feof($remoteFile)) {
-                    fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
-                }
-                fclose($remoteFile);
-                fclose($localFile);
-                $this->getModule()->emDebug("File saved to: " . $localSavePath);
-                return true;
-            } else {
-                $this->getModule()->emDebug("Failed to open file for reading/writing.");
-                return false;
-            }
+//        $eDocsLocalFile = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
+//
+//        if (file_exists($eDocsLocalFile) && is_file($eDocsLocalFile)) {
+//            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
+//
+//            // Open remote file for reading and local file for writing
+//            $eDocsFile = fopen($eDocsLocalFile, 'rb'); // Read in binary mode
+//            $tempFile = fopen($localSavePath, 'wb');  // Write in binary mode
+//
+//            if (!$eDocsFile) {
+//                $this->getModule()->emError("Failed to open local file: $eDocsFile");
+//                return false;
+//            }
+//
+//            if (!$tempFile) {
+//                $this->getModule()->emError("Failed to open temp file: $localSavePath");
+//                return false;
+//            }
+//
+//            while (!feof($eDocsFile)) {
+//                fwrite($tempFile, fread($eDocsFile, 8192)); // Read and write in chunks
+//            }
+//            fclose($eDocsFile);
+//            fclose($tempFile);
+//            $this->getModule()->emDebug("File saved to: " . $localSavePath);
+//            return true;
+//        }
+//        return false;
+    }
+
+    public function downloadGoogleCloudFileToTemp($docMetadata): bool
+    {
+        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
+            return false;
+
+        $googleClient = Files::googleCloudStorageClient();
+        $googleClient->registerStreamWrapper();
+
+        $sourceFile = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $docMetadata['stored_name'];
+        $destination = APP_PATH_TEMP . $docMetadata['doc_name'];
+
+        return $this->downloadFile($sourceFile, $destination);
+
+//        //Initialize Google client
+//        $googleClient = Files::googleCloudStorageClient();
+//        $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
+//
+//        //Allows interaction with Google files as if they were local
+//        $googleClient->registerStreamWrapper();
+//
+//        $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $docMetadata['stored_name'];
+//        if (file_exists($remoteFilePath) && is_file($remoteFilePath)) {
+//            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
+//
+//            // Open remote file for reading and local file for writing
+//            $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
+//            $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
+//
+//            if (!$remoteFile) {
+//                $this->getModule()->emError("Failed to open remote file: $remoteFilePath");
+//                return false;
+//            }
+//
+//            if (!$localFile) {
+//                $this->getModule()->emError("Failed to open local file: $localSavePath");
+//                return false;
+//            }
+//
+//            while (!feof($remoteFile)) {
+//                fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
+//            }
+//
+//            fclose($remoteFile);
+//            fclose($localFile);
+//
+//            $this->getModule()->emDebug("File $remoteFilePath saved to: $localSavePath Successfully");
+//            return true;
+//        }
+//        return false;
+    }
+
+    /**
+     * Downloads a file from a given source to the temp directory
+     * @param string $sourceFilePath
+     * @param string $destinationPath
+     * @return bool
+     */
+    private function downloadFile($sourceFilePath, $destinationPath): bool
+    {
+        if (!file_exists($sourceFilePath) || !is_file($sourceFilePath)) {
+            $this->getModule()->emError("File not found: $sourceFilePath");
+            return false;
         }
-        return false;
+
+        $source = fopen($sourceFilePath, 'rb'); // Read in binary mode
+        $destination = fopen($destinationPath, 'wb'); // Write in binary mode
+
+        if (!$source || !$destination) {
+            $this->getModule()->emError("Failed to open file: " . ($source ? $destinationPath : $sourceFilePath));
+            return false;
+        }
+
+        while (!feof($source)) {
+            fwrite($destination, fread($source, 8192)); // Read and write in chunks
+        }
+
+        fclose($source);
+        fclose($destination);
+
+        $this->getModule()->emDebug("File saved to: $destinationPath");
+        return true;
     }
 
     public function determineFileUploadFieldValues($projectId, $recordId){
