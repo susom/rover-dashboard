@@ -115,6 +115,14 @@ class DashboardUtil
      */
     public function downloadLocalhostFileToTemp($docMetadata, $parentId){
         $local_file = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
+        $timestamp = strtotime($docMetadata['stored_date']); // Convert to timestamp
+        $currentTime = time(); // Get current timestamp
+
+        // Check if the current time is within 2 minutes (120 seconds) of the storage date
+        // This check is used to prevent copying files to children when the user has not uploaded a new file
+        if (!(abs($currentTime - $timestamp) <= 120))
+            return false;
+
         if (file_exists($local_file) && is_file($local_file)) {
             $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
 

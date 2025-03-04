@@ -339,18 +339,25 @@ class Child {
     public function copyFileFromParent($docMetadata, $fieldName, $recordId){
         if($this->getChildProjectId() !== "18")
             return 0;
-        $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
-        if(!file_exists($localSavePath)){
-            return 0;
-        }
 
+        $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
         $doc_size = filesize($localSavePath);
         $mime_type = $docMetadata['mime_type'];
         $doc_name = $docMetadata['doc_name'];
         $childId = $this->getChildProjectId();
         $file_extension = getFileExt($docMetadata['doc_name']);
 
-        // If not an allowed file extension, then prevent uploading the file and return "0" to denote error
+        if(!file_exists($localSavePath)){ // Temp file doesnt exist, we cant do anything
+            return 0;
+        }
+
+        $childRecords = $this->childRecordExists($recordId); //Fetch all matching records that require file update
+        if(sizeof($childRecords) == 0){ // No matching records with the same universal ID exist in this child project
+            $this->getModule()->emDebug("No matching records exist in child projectID: $childId for universalID : $recordId. Skipping copy");
+            return 0;
+        }
+
+        // If not an allowed file extension, then prevent uploading the file
         if (!Files::fileTypeAllowed($docMetadata['doc_name'])) {
             unlink($localSavePath);
             $this->getModule()->emError("File type not allowed for upload.");
@@ -364,8 +371,8 @@ class Child {
             return 0;
         }
 
-        $childRecords = $this->childRecordExists($recordId);
-        foreach($childRecords as $childRecord){ //Iterate through each record in the child project that has a matching universal ID to parent
+        // Iterate over each matching record in current child, creating file copy from parent and updating link tables
+        foreach($childRecords as $childRecord){
             $stored_name = date('YmdHis') . "_pid" . ($childId ?: "0") . "_" . generateRandomHash(6) . getFileExt($docMetadata['doc_name'], true);
             $result = 0;
             //Save the data in the correct child location in edocs
@@ -374,19 +381,17 @@ class Child {
             }
 
             if($result){
+                // Update 3 required tables to allow files to be seen on REDCap UI
                 $docId = $this->updateEdocsMetadata($stored_name, $mime_type, $doc_name, $doc_size, $file_extension);
                 if($docId){ //Updated successfully
-                    $res = $this->updateEdocsDataMapping($docId, $childRecord['record_id'], $fieldName);
-                    $res = $this->updateRedcapData($docId, $childRecord['record_id'], $fieldName);
-                    return 1;
+                    $res1 = $this->updateEdocsDataMapping($docId, $childRecord['record_id'], $fieldName);
+                    $res2 = $this->updateRedcapData($docId, $childRecord['record_id'], $fieldName);
                 }
-                return 0;
-            } else {
-                return 0; //Failed
             }
         }
-
+        return 1;
     }
+
     public function updateEdocsMetadata($storedName, $mimeType, $docName, $docSize, $fileExtension){
         $childId = $this->getChildProjectId();
         $this->getModule()->emLog("Updating redcap_edocs_metadata with values: $storedName, $mimeType, $docName, $docSize, $fileExtension, $childId");
@@ -396,6 +401,8 @@ class Child {
 						  VALUES ('" . db_escape($storedName) . "', '" . db_escape($mimeType) . "', '" . db_escape($docName) . "',
 						  '" . db_escape($docSize) . "', '" . db_escape($fileExtension) . "',
 						  " . ($childId ?: "null") . ", '".NOW."')");
+        if(!$q)
+            $this->getModule()->emError("Failed updating redcap_edocs_metadata with values: $storedName, $mimeType, $docName, $docSize, $fileExtension, $childId");
 
         return (!$q ? 0 : db_insert_id());
     }
@@ -405,11 +412,15 @@ class Child {
         $pSettings = $this->getParentSettings();
         $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
         $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+        $query = "INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
+          VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '" . db_escape($eventId) . "',
+                  '" . db_escape((int) $childRecordId) . "', '" . db_escape($fieldName) . "', 1)";
+        $q = db_query($query);
 
-        $q = db_query("INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
-               VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', db_escape($eventId),
-                       '" . db_escape($childRecordId) . "', '" . db_escape($fieldName) . "', '1')");
-        return 1;
+        if(!$q)
+            $this->getModule()->emError("Failed updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+
+        return (!$q ? 0 : db_insert_id());
     }
 
     public function updateRedcapData($docId, $childRecordId, $fieldName){
@@ -418,10 +429,13 @@ class Child {
         $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
         $dataTable = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($childId) : "redcap_data";
         $this->getModule()->emLog("Updating $dataTable with values: $childId, $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
-
-        $q = db_query("INSERT INTO " . db_escape($dataTable) . " (project_id, event_id, record, field_name, value, instance)
-               VALUES ('" . db_escape($childId) . "', db_escape($eventId), '" . db_escape($childRecordId) . "', 
+        $q = db_query("INSERT INTO `" . $dataTable . "` (project_id, event_id, record, field_name, value, instance)
+               VALUES ('" . db_escape($childId) . "', '" . db_escape($eventId) . "', '" . db_escape((int)$childRecordId) . "', 
                        '" . db_escape($fieldName) . "', '" . db_escape($docId) . "', NULL)");
-        return 1;
+
+        if(!$q)
+            $this->getModule()->emError("Failed updating $dataTable with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+
+        return (!$q ? 0 : db_insert_id());
     }
 }

@@ -162,7 +162,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
 
                 foreach($file_fields as $variable => $docId) {
-                    if (!empty($docId)) { //If there exists a file uploaded to one of the document fields
+                    if (!empty($docId)) { //If there exists a file uploaded to one of the document fields, we will attempt to save to temp
                         $thisFile = $util->getFileMetadata($docId, $parent_id); //Current processed file
                         $storageName = $util->getStorageBucketName();
                         if (!empty($storageName) && !empty($thisFile)) { //Have a bucket name , production server
@@ -196,13 +196,15 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         }
                     }
                 }
+
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
                     $child = new Child($this, $childProjectId, $parent_id, $pSettings);
 
-                    // Session data not included here, as only admins will be updating from this page, no need to pass last user to update
+                    // Update record data for each child, copying from parent
                     $child->updateParentData($record);
 
+                    // If there were any downloaded files, copy them to each record / child combo
                     if(count($successFileMetadata) > 0){
                         foreach($successFileMetadata as $variable => $fileMetadata){
                             $child->copyFileFromParent($fileMetadata, $variable, $record);
