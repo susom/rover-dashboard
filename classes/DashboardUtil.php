@@ -147,10 +147,18 @@ class DashboardUtil
     }
 
     public function determineFileUploadFieldValues($projectId, $recordId){
+        $settings = $this->getEMSettings();
+
+        // If file-fields are set, use them. Else default to 4 static fields
+        if(!empty($settings['file-field']) && count($settings['file-field']) > 0)
+            $fields = $settings['file-field'];
+        else
+            $fields = ['protocol_upload', 'investigators_brochure', 'informed_consent', 'other_docs'];
+
         $queryParams = [
             "return_format" => "json",
             "project_id" => $projectId,
-            "fields" => ['protocol_upload', 'investigators_brochure', 'informed_consent', 'other_docs'],
+            "fields" => $fields,
             "records" => $recordId
         ];
         $parentFiles = json_decode(REDCap::getData($queryParams), true);
