@@ -98,6 +98,16 @@
             }
         },
         {
+            "key": "file-field",
+            "name": "<strong>File field</strong><br><i>List of file fields to be copied from this project to all linked children upon creation/update",
+            "type": "field-list",
+            "repeatable": true,
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
+        },
+        {
             "key": "child-project-list-description",
             "type": "descriptive",
             "name": "<h5><strong>Child Projects</strong></h5><i>Each child project below will be incorporated as possible projects to triage users to depending on universal intake answers</i>",
