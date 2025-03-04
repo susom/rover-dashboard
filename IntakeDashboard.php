@@ -166,33 +166,11 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         $thisFile = $util->getFileMetadata($docId, $parent_id); //Current processed file
                         $storageName = $util->getStorageBucketName();
                         if (!empty($storageName) && !empty($thisFile)) { //Have a bucket name , production server
-                            // TODO: Implement this for googleCloud bucket storage
-//                    $googleClient = Files::googleCloudStorageClient();
-//                    $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
-//                    $googleClient->registerStreamWrapper();
-//
-//                    $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $this_file['stored_name'];
-//                    $localSavePath = __DIR__  . $this_file['doc_name']; // Adjust directory as needed
-//                    // Open remote file for reading and local file for writing
-//                    $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
-//                    $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
-//
-//                    if ($remoteFile && $localFile) {
-//                        while (!feof($remoteFile)) {
-//                            fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
-//                        }
-//                        fclose($remoteFile);
-//                        fclose($localFile);
-//                        $this->emLog("File saved to: " . $localSavePath);
-//                    } else {
-//                        $this->emError("File not saved to: " . $localSavePath . " Failed to open file for reading/writing");
-//                        echo "Failed to open file for reading/writing.";
-//                    }
-
+                            if($util->downloadGoogleCloudFileToTemp($thisFile))
+                                $successFileMetadata[$variable] = $storageName;
                         } else { //Localhost, serve from internal location
-                            if ($util->downloadLocalhostFileToTemp($thisFile, $parent_id)) {
+                            if ($util->downloadLocalhostFileToTemp($thisFile, $parent_id))
                                 $successFileMetadata[$variable] = $thisFile;
-                            }
                         }
                     }
                 }
