@@ -112,6 +112,32 @@ class DashboardUtil
         return abs(time() - $timestamp) <= $rangeInSeconds;
     }
 
+    public function saveFilesToTemp($fileFields, $parentId, $storageName) {
+        $successFileMetadata = [];
+
+        foreach ($fileFields as $variable => $docId) {
+            if (empty($docId)) continue;
+
+            $thisFile = $this->getFileMetadata($docId, $parentId);
+            if (empty($thisFile)) continue;
+
+            $downloadSuccess = !empty($storageName)
+                ? $this->downloadGoogleCloudFileToTemp($thisFile)
+                : $this->downloadLocalhostFileToTemp($thisFile, $parentId);
+
+            if ($downloadSuccess) {
+                $successFileMetadata[$variable] = $thisFile;
+                $name = $thisFile['doc_name'];
+                $this->getModule()->emDebug("File metadata saved successfully to Temp for file: $name for variable $variable in projectId $parentId");
+            } else {
+                $name = $thisFile['doc_name'];
+                $this->getModule()->emError("File metadata failed to save to Temp for file: $name for variable $variable in projectId $parentId");
+            }
+        }
+
+        return $successFileMetadata;
+    }
+
     /**
      * Downloads a file to temp directory from localhost
      * @param $docMetadata
@@ -120,8 +146,8 @@ class DashboardUtil
      */
     public function downloadLocalhostFileToTemp($docMetadata, $parentId): bool
     {
-        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
-            return false;
+//        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
+//            return false;
 
         $sourceFile = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
         $destination = APP_PATH_TEMP . $docMetadata['doc_name'];
@@ -160,8 +186,8 @@ class DashboardUtil
 
     public function downloadGoogleCloudFileToTemp($docMetadata): bool
     {
-        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
-            return false;
+//        if (!$this->isWithinTimeRange($docMetadata['stored_date']))
+//            return false;
 
         $googleClient = Files::googleCloudStorageClient();
         $googleClient->registerStreamWrapper();

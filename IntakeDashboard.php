@@ -156,23 +156,15 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
             $parent_id = $this->getSystemSetting('parent-project');
             $successFileMetadata = [];
+            $storageName = null;
+
             if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
                 $pSettings = $this->getProjectSettings($parent_id);
-                $util = new DashboardUtil($this, $pSettings);
-                $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
-
-                foreach($file_fields as $variable => $docId) {
-                    if (!empty($docId)) { //If there exists a file uploaded to one of the document fields, we will attempt to save to temp
-                        $thisFile = $util->getFileMetadata($docId, $parent_id); //Current processed file
-                        $storageName = $util->getStorageBucketName();
-                        if (!empty($storageName) && !empty($thisFile)) { //Have a bucket name , production server
-                            if($util->downloadGoogleCloudFileToTemp($thisFile))
-                                $successFileMetadata[$variable] = $storageName;
-                        } else { //Localhost, serve from internal location
-                            if ($util->downloadLocalhostFileToTemp($thisFile, $parent_id))
-                                $successFileMetadata[$variable] = $thisFile;
-                        }
-                    }
+                if($instrument === $pSettings['universal-survey-form-mutable']){ // Only have to handle file uploads on the mutable form
+                    $util = new DashboardUtil($this, $pSettings);
+                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
+                    $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
+                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
                 }
 
                 //Iterate through all linked children and overwrite with new parent data
@@ -180,12 +172,12 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     $child = new Child($this, $childProjectId, $parent_id, $pSettings);
 
                     // Update record data for each child, copying from parent
-                    $child->updateParentData($record);
+                    $child->updateParentData($record, $instrument);
 
                     // If there were any downloaded files, copy them to each record / child combo
                     if(count($successFileMetadata) > 0){
                         foreach($successFileMetadata as $variable => $fileMetadata){
-                            $child->copyFileFromParent($fileMetadata, $variable, $record);
+                            $child->copyFileFromParent($fileMetadata, $variable, $record, $storageName, null);
                         }
                     }
                 }
@@ -230,15 +222,28 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
             $completedIntake = reset($completedIntake);
+            $successFileMetadata = [];
             if(!empty($completedIntake)){
                 // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
                     $child = new Child($this, $project_id, $parent_id, $pSettings);
                     $child->saveParentData($completedIntake['universal_id'], $record);
-//                    $child->saveParentData($record);
+
+                    $util = new DashboardUtil($this, $pSettings);
+                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']); // Grab all fields that are file uploads, along with their doc_ids
+                    $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
+
+                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
+
+                    // If there were any downloaded files, copy them to each record / child combo
+                    if(count($successFileMetadata) > 0){
+                        foreach($successFileMetadata as $variable => $fileMetadata){
+                            // Pass $record as the new Child ID -> this will restrict the scope to only updating the current record
+                            $child->copyFileFromParent($fileMetadata, $variable, $completedIntake['universal_id'], $storageName, $record);
+                        }
+                    }
 
                 } else {
-
                     // Universal immutable survey form has been saved for the first time (new intake)
                     if($instrument === $pSettings['universal-survey-form-immutable']) {
                         // Determine username
@@ -257,17 +262,29 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                             );
                         }
 
-                    } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered
+                    } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered via dashboard
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
 
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
 
+                        // File copy functionality
+                        $util = new DashboardUtil($this, $pSettings);
+                        $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
+                        $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
+
                         //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {
                             $child = new Child($this, $childProjectId, $parent_id, $pSettings);
-                            $child->updateParentData($record);
+                            $child->updateParentData($record, $instrument);
+
+                            if(count($successFileMetadata) > 0){
+                                foreach($successFileMetadata as $variable => $fileMetadata){
+                                    $child->copyFileFromParent($fileMetadata, $variable, $record, $storageName, null);
+                                }
+                            }
                         }
                     }
                 }
@@ -317,7 +334,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $requiredChildPIDs = $this->getRequiredChildPIDs($pSettings);
             foreach($requiredChildPIDs as $childProjectId) {
                 $child = new Child($this, $childProjectId, $parent_id, $pSettings);
-                $child->updateParentData($completedIntake['record_id']);
+                $child->updateParentData($completedIntake['record_id'], $pSettings['universal-survey-form-immutable']);
             }
 
             return json_encode(["data" => $completedIntake, "success" => true]);
@@ -853,7 +870,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $child = new Child($this, $payload['child_pid'], $parent_id, $pSettings);
 
-            $submissions = $child->childRecordExists($payload['universal_id']);
+            $submissions = $child->allChildRecordsExist($payload['universal_id']);
 
             // Grab first form name for this child
             $mainSurvey = $child->getMainSurveyFormName();
