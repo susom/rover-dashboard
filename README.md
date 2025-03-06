@@ -9,11 +9,13 @@ The Rover project aims to prototype a survey configuration in REDCap to assess i
 
 ### Requirements:
 1. The Mutable survey in the parent project must have an additional variable `last_editing_user`
-2. Each child project must have an additional variable `universal_id` within the immutable intake survey
-3. Each child project must have an additional variable `dashboard_submission_user` within their first survey (own)
-4. Each child project is required to have an additional field `univ_last_update` present in the mutable intake form to house the last updated timestamp
+2. The Mutable survey in the parent project must have a field that houses JSON text for file caching (specified in EM settings)
+3. Each child project must have an additional variable `universal_id` within the immutable intake survey
+4. Each child project must have an additional variable `dashboard_submission_user` within their first survey (own)
+5. Each child project is required to have an additional field `univ_last_update` present in the mutable intake form to house the last updated timestamp
    - This timestamp field will reflect `survey completion time` of the universal intake (mutable survey)
    - **Editing this record from the parent project outside of survey view will not update this time to children projects**
+6. Each child project must have a checkbox field in their mutable intake form to determine finished requests
 
 ### Default naming:
 - Immutable survey (1) : `Intake`
