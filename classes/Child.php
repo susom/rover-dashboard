@@ -362,13 +362,10 @@ class Child {
      * @param $docMetadata
      * @param $fieldName
      * @param $recordId //Universal ID
-     * @param $storageName
      * @param null $newChildRecordId //Called from redcap_survey_complete to restrict copying all files from parent to a single new child record
      * @return int
      */
-    public function copyFileFromParent($docMetadata, $fieldName, $recordId, $storageName, $newChildRecordId = null){
-//        if($this->getChildProjectId() !== "18")
-//            return 0;
+    public function copyFileFromParent($docMetadata, $fieldName, $recordId, $newChildRecordId = null){
         try {
             $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
             $doc_size = filesize($localSavePath);
@@ -407,7 +404,7 @@ class Child {
                 $result = 0;
 
                 // Upload file to either bucket storage or local edocs
-                if(!empty($storageName)){
+                if(!empty($GLOBALS['google_cloud_storage_api_bucket_name'])){
                     $googleClient = Files::googleCloudStorageClient();
                     $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
 
@@ -439,7 +436,7 @@ class Child {
             }
             return 1;
         } catch (\Exception $e) {
-            $this->getModule()->emError('EXCEPTION : ' . $e->getMessage());
+            $this->getModule()->emError('EXCEPTION IN COPY FILE FROM PARENT : ' . $e->getMessage());
         }
     }
 

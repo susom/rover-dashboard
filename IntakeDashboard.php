@@ -141,6 +141,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
      * @param int|NULL $response_id
      * @param int $repeat_instance
      * @return void
+     * @throws Exception
      */
     public function redcap_save_record(
         int    $project_id,
@@ -156,16 +157,18 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
             $parent_id = $this->getSystemSetting('parent-project');
             $successFileMetadata = [];
-            $storageName = null;
 
             if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
                 $pSettings = $this->getProjectSettings($parent_id);
+                $util = new DashboardUtil($this, $pSettings);
+
                 if($instrument === $pSettings['universal-survey-form-mutable']){ // Only have to handle file uploads on the mutable form
-                    $util = new DashboardUtil($this, $pSettings);
-                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
-                    $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
-                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
+                    $file_fields = $util->checkFileChanges($project_id, $record);
+                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
                 }
+
+                //Update file field cache in parent here for subsequent saves
+                $util->updateFileCache($parent_id, $record);
 
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
@@ -177,7 +180,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     // If there were any downloaded files, copy them to each record / child combo
                     if(count($successFileMetadata) > 0){
                         foreach($successFileMetadata as $variable => $fileMetadata){
-                            $child->copyFileFromParent($fileMetadata, $variable, $record, $storageName, null);
+                            $child->copyFileFromParent($fileMetadata, $variable, $record, null);
                         }
                     }
                 }
@@ -222,24 +225,22 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
             $completedIntake = reset($completedIntake);
-            $successFileMetadata = [];
             if(!empty($completedIntake)){
-                // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
+                    // Child survey has been saved from dashboard for the first time, we have to copy data from the parent project
                     $child = new Child($this, $project_id, $parent_id, $pSettings);
                     $child->saveParentData($completedIntake['universal_id'], $record);
 
+                    // Copy all mutable files over, no restriction
                     $util = new DashboardUtil($this, $pSettings);
-                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']); // Grab all fields that are file uploads, along with their doc_ids
-                    $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
-
-                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
+                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']);
+                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
 
                     // If there were any downloaded files, copy them to each record / child combo
                     if(count($successFileMetadata) > 0){
                         foreach($successFileMetadata as $variable => $fileMetadata){
                             // Pass $record as the new Child ID -> this will restrict the scope to only updating the current record
-                            $child->copyFileFromParent($fileMetadata, $variable, $completedIntake['universal_id'], $storageName, $record);
+                            $child->copyFileFromParent($fileMetadata, $variable, $completedIntake['universal_id'], $record);
                         }
                     }
 
@@ -262,7 +263,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                             );
                         }
 
-                    } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered via dashboard
+                    } else if($instrument === $pSettings['universal-survey-form-mutable']) {
+                        // Editable survey has been altered via dashboard - Can occur infinite times
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
 
@@ -271,18 +273,21 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                         // File copy functionality
                         $util = new DashboardUtil($this, $pSettings);
-                        $file_fields = $util->determineFileUploadFieldValues($parent_id, $record); // Grab all fields that are file uploads, along with their doc_ids
-                        $storageName = $util->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
-                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id, $storageName);
+                        $file_fields = $util->checkFileChanges($project_id, $record);
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+
+                        //Update file field cache in parent here for subsequent saves
+                        $util->updateFileCache($parent_id, $record);
 
                         //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {
                             $child = new Child($this, $childProjectId, $parent_id, $pSettings);
                             $child->updateParentData($record, $instrument);
 
+                            // For each file field -> update each child record file field
                             if(count($successFileMetadata) > 0){
                                 foreach($successFileMetadata as $variable => $fileMetadata){
-                                    $child->copyFileFromParent($fileMetadata, $variable, $record, $storageName, null);
+                                    $child->copyFileFromParent($fileMetadata, $variable, $record, null);
                                 }
                             }
                         }

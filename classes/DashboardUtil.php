@@ -107,13 +107,9 @@ class DashboardUtil
         return db_fetch_assoc($q);
     }
 
-    public function isWithinTimeRange($storedDate, $rangeInSeconds = 120) {
-        $timestamp = strtotime($storedDate); // Convert to timestamp
-        return abs(time() - $timestamp) <= $rangeInSeconds;
-    }
-
-    public function saveFilesToTemp($fileFields, $parentId, $storageName) {
+    public function  saveFilesToTemp($fileFields, $parentId) {
         $successFileMetadata = [];
+        $storageName = $this->getStorageBucketName(); //Name of Edocs bucket if Edocs is on cloud
 
         foreach ($fileFields as $variable => $docId) {
             if (empty($docId)) continue;
@@ -154,34 +150,6 @@ class DashboardUtil
 
         return $this->downloadFile($sourceFile, $destination);
 
-//        $eDocsLocalFile = EDOC_PATH . \Files::getLocalStorageSubfolder($parentId, true) . $docMetadata['stored_name'];
-//
-//        if (file_exists($eDocsLocalFile) && is_file($eDocsLocalFile)) {
-//            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name']; // Adjust directory as needed
-//
-//            // Open remote file for reading and local file for writing
-//            $eDocsFile = fopen($eDocsLocalFile, 'rb'); // Read in binary mode
-//            $tempFile = fopen($localSavePath, 'wb');  // Write in binary mode
-//
-//            if (!$eDocsFile) {
-//                $this->getModule()->emError("Failed to open local file: $eDocsFile");
-//                return false;
-//            }
-//
-//            if (!$tempFile) {
-//                $this->getModule()->emError("Failed to open temp file: $localSavePath");
-//                return false;
-//            }
-//
-//            while (!feof($eDocsFile)) {
-//                fwrite($tempFile, fread($eDocsFile, 8192)); // Read and write in chunks
-//            }
-//            fclose($eDocsFile);
-//            fclose($tempFile);
-//            $this->getModule()->emDebug("File saved to: " . $localSavePath);
-//            return true;
-//        }
-//        return false;
     }
 
     public function downloadGoogleCloudFileToTemp($docMetadata): bool
@@ -196,43 +164,6 @@ class DashboardUtil
         $destination = APP_PATH_TEMP . $docMetadata['doc_name'];
 
         return $this->downloadFile($sourceFile, $destination);
-
-//        //Initialize Google client
-//        $googleClient = Files::googleCloudStorageClient();
-//        $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
-//
-//        //Allows interaction with Google files as if they were local
-//        $googleClient->registerStreamWrapper();
-//
-//        $remoteFilePath = 'gs://' . $GLOBALS['google_cloud_storage_api_bucket_name'] . '/' . $docMetadata['stored_name'];
-//        if (file_exists($remoteFilePath) && is_file($remoteFilePath)) {
-//            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
-//
-//            // Open remote file for reading and local file for writing
-//            $remoteFile = fopen($remoteFilePath, 'rb'); // Read in binary mode
-//            $localFile = fopen($localSavePath, 'wb');  // Write in binary mode
-//
-//            if (!$remoteFile) {
-//                $this->getModule()->emError("Failed to open remote file: $remoteFilePath");
-//                return false;
-//            }
-//
-//            if (!$localFile) {
-//                $this->getModule()->emError("Failed to open local file: $localSavePath");
-//                return false;
-//            }
-//
-//            while (!feof($remoteFile)) {
-//                fwrite($localFile, fread($remoteFile, 8192)); // Read and write in chunks
-//            }
-//
-//            fclose($remoteFile);
-//            fclose($localFile);
-//
-//            $this->getModule()->emDebug("File $remoteFilePath saved to: $localSavePath Successfully");
-//            return true;
-//        }
-//        return false;
     }
 
     /**
@@ -284,6 +215,85 @@ class DashboardUtil
         ];
         $parentFiles = json_decode(REDCap::getData($queryParams), true);
         return reset($parentFiles);
+    }
+
+    /**
+     * @param $parent_id
+     * @param $record
+     * @return void
+     * @throws \Exception
+     * Updates the file-field-cache with a new json object detailing the current state of uploaded files (docIDs)
+     */
+    public function updateFileCache($parent_id, $record): void
+    {
+        try {
+            //Update file fields here
+            $pSettings = $this->getEMSettings();
+            $cacheField = $pSettings['file-field-cache-json'];
+
+            if(!empty($cacheField)) {
+                $pro = new \Project($parent_id);
+                $primary_field = $pro->table_pk;
+
+                //Fetch current state uploaded file fields
+                $fileFields = $this->determineFileUploadFieldValues($parent_id, $record);
+                $saveData = [
+                    [
+                        $primary_field => $record,
+                        "$cacheField" => json_encode($fileFields),
+                    ]
+                ];
+
+                $res = REDCap::saveData($parent_id, 'json', json_encode($saveData));
+                if(!empty($res['errors'])) {
+                    if(!is_string($res['errors']))
+                        $errors = json_encode($res['errors']);
+                    else
+                        $errors = $res['errors'];
+                    $this->getModule()->emError("Failed to update file cache for $parent_id. Errors: $errors");
+                }
+            }
+        } catch (\Exception $e) {
+            $this->getModule()->emError($e->getMessage());
+        }
+
+    }
+
+
+    /**
+     * @param $projectId string - parentId
+     * @param $recordId string - universal recordId
+     * files param should be an array with K = variable and V = DocID
+     * @return array
+     */
+    public function checkFileChanges($projectId, $recordId): array
+    {
+        $settings = $this->getEMSettings();
+        $cacheField = $settings['file-field-cache-json'];
+        $currentFileState = $this->determineFileUploadFieldValues($projectId, $recordId);
+
+        if(empty($cacheField)) // No field value, update all file fields everytime
+            return $currentFileState;
+
+        $queryParams = [
+            "return_format" => "json",
+            "project_id" => $projectId,
+            "fields" => $cacheField,
+            "records" => $recordId
+        ];
+
+        $fileCacheField = json_decode(REDCap::getData($queryParams), true);
+        $fileCacheField = reset($fileCacheField);
+
+        //This value will be the last saved file state in the record
+        $previousFileState = json_decode($fileCacheField[$cacheField], true);
+
+        //If there is no current value, we have never saved the JSON before, copy every file
+        if(!empty($previousFileState)){
+            return array_diff_assoc($currentFileState, $previousFileState);
+        }
+
+        return $currentFileState;
     }
 
     private function setModule($module)
