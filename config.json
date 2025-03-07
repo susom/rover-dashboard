@@ -98,10 +98,18 @@
             }
         },
         {
-            "key": "file-field",
-            "name": "<strong>File field</strong><br><i>List of file fields to be copied from this project to all linked children upon creation/update",
-            "type": "field-list",
-            "repeatable": true,
+            "key": "file-description",
+            "type": "descriptive",
+            "name": "<h5><strong>Files</strong></h5><i>The functionality below will relate to file fields on the mutable survey</i>",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
+        },
+        {
+            "key": "enable-file-copying",
+            "name": "<strong>Enable File copying</strong><br><i>Enables file copying between the parent intake and all linked children upon update",
+            "type": "checkbox",
             "branchingLogic": {
                 "field": "is_child_project",
                 "value": "0"
@@ -113,8 +121,18 @@
             "type": "field-list",
             "required": true,
             "branchingLogic": {
-                "field": "is_child_project",
-                "value": "0"
+                "field": "enable-file-copying",
+                "value": "1"
+            }
+        },
+        {
+            "key": "file-field",
+            "name": "<strong>File field</strong><br><i>File field to be copied from this project to all linked children upon creation/update",
+            "type": "field-list",
+            "repeatable": true,
+            "branchingLogic": {
+                "field": "enable-file-copying",
+                "value": "1"
             }
         },
         {

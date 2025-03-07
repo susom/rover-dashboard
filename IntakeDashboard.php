@@ -163,12 +163,14 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 $util = new DashboardUtil($this, $pSettings);
 
                 if($instrument === $pSettings['universal-survey-form-mutable']){ // Only have to handle file uploads on the mutable form
-                    $file_fields = $util->checkFileChanges($project_id, $record);
-                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
-                }
+                    if($pSettings['enable-file-copying']){ //If setting is enabled
+                        $file_fields = $util->checkFileChanges($project_id, $record);
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
 
-                //Update file field cache in parent here for subsequent saves
-                $util->updateFileCache($parent_id, $record);
+                        //Update file field cache in parent here for subsequent saves
+                        $util->updateFileCache($parent_id, $record);
+                    }
+                }
 
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
@@ -225,16 +227,20 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
             $completedIntake = reset($completedIntake);
+            $successFileMetadata = [];
+
             if(!empty($completedIntake)){
                 if($parent_id !== $project_id){
                     // Child survey has been saved from dashboard for the first time, we have to copy data from the parent project
                     $child = new Child($this, $project_id, $parent_id, $pSettings);
                     $child->saveParentData($completedIntake['universal_id'], $record);
 
-                    // Copy all mutable files over, no restriction
-                    $util = new DashboardUtil($this, $pSettings);
-                    $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']);
-                    $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+                    if($pSettings['enable-file-copying']) {
+                        // Copy all mutable files over, no restriction as we know they don't exist yet
+                        $util = new DashboardUtil($this, $pSettings);
+                        $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']);
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+                    }
 
                     // If there were any downloaded files, copy them to each record / child combo
                     if(count($successFileMetadata) > 0){
@@ -247,7 +253,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 } else {
                     // Universal immutable survey form has been saved for the first time (new intake)
                     if($instrument === $pSettings['universal-survey-form-immutable']) {
-                        // Determine username
+                        // Determine username and set permissions for dashboard
                         $requesterUsername = $this->determineREDCapUsername($completedIntake['requester_sunet_sid'], $completedIntake['requester_email']);
                         if (!empty($requesterUsername)) {
                             $this->saveUser($requesterUsername, $completedIntake['record_id']);
@@ -271,13 +277,15 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
 
-                        // File copy functionality
-                        $util = new DashboardUtil($this, $pSettings);
-                        $file_fields = $util->checkFileChanges($project_id, $record);
-                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+                        if($pSettings['enable-file-copying']) {
+                            // File copy functionality
+                            $util = new DashboardUtil($this, $pSettings);
+                            $file_fields = $util->checkFileChanges($project_id, $record);
+                            $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
 
-                        //Update file field cache in parent here for subsequent saves
-                        $util->updateFileCache($parent_id, $record);
+                            //Update file field cache in parent here for subsequent saves
+                            $util->updateFileCache($parent_id, $record);
+                        }
 
                         //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {

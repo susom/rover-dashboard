@@ -202,7 +202,7 @@ class DashboardUtil
     {
         $settings = $this->getEMSettings();
 
-        // If file-fields are set, use them. Else default to 4 static fields
+        // If file-fields are set, use them.
         if (!empty($settings['file-field']) && count($settings['file-field']) > 0){
             $fields = $settings['file-field'];
         } else {
@@ -240,20 +240,22 @@ class DashboardUtil
 
                 //Fetch current state uploaded file fields
                 $fileFields = $this->determineFileUploadFieldValues($parent_id, $record);
-                $saveData = [
-                    [
-                        $primary_field => $record,
-                        "$cacheField" => json_encode($fileFields),
-                    ]
-                ];
+                if(!empty($fileFields)) {
+                    $saveData = [
+                        [
+                            $primary_field => $record,
+                            "$cacheField" => json_encode($fileFields),
+                        ]
+                    ];
 
-                $res = REDCap::saveData($parent_id, 'json', json_encode($saveData));
-                if(!empty($res['errors'])) {
-                    if(!is_string($res['errors']))
-                        $errors = json_encode($res['errors']);
-                    else
-                        $errors = $res['errors'];
-                    $this->getModule()->emError("Failed to update file cache for $parent_id. Errors: $errors");
+                    $res = REDCap::saveData($parent_id, 'json', json_encode($saveData));
+                    if(!empty($res['errors'])) {
+                        if(!is_string($res['errors']))
+                            $errors = json_encode($res['errors']);
+                        else
+                            $errors = $res['errors'];
+                        $this->getModule()->emError("Failed to update file cache for $parent_id. Errors: $errors");
+                    }
                 }
             }
         } catch (\Exception $e) {
