@@ -73,14 +73,20 @@ class Child {
         $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
         $childKeys = array_fill_keys($currentChildFields, 1);
 
+        // Grab parent (source of truth data)
         $parentData = json_decode(REDCap::getData($queryParams), true);
         $parentData = reset($parentData);
 
+        // Remove all extra fields not present on the first two surveys
         foreach($parentData as $field => $val){
             if(!isset($childKeys[$field])){
                 unset($parentData[$field]);
             }
         }
+
+        // Explicitly unset file-field-cache-json : not needed in children projects
+        if(isset($pSettings['file-field-cache-json']))
+            unset($parentData[$pSettings['file-field-cache-json']]);
 
         return $parentData;
     }
@@ -94,7 +100,7 @@ class Child {
         $childId = $this->getChildProjectId();
         $pSettings = $this->getParentSettings();
 
-        if($instrument == $pSettings['universal-survey-form-immutable']){ //If updating immutable data (active/inactive options) we have to query every child
+        if($instrument == $pSettings['universal-survey-form-immutable']){ //If updating immutable data (active/inactive options) we have to query every child regardless of activity
             $foundChildRecords = $this->allChildRecordsExist($recordId);
         } else { //Otherwise filter out the inactive projects
             $foundChildRecords = $this->childRecordExists($recordId);
@@ -146,12 +152,12 @@ class Child {
     /**
      * @param $universalId
      * @param $childRecordId
-     * @param $additionalParams
      * @return mixed|null
      * Fetch child record data for any matching records given universal id (omits inactive intakes)
      */
-    public function childRecordExists($universalId, $childRecordId = null, $additionalParams = []){
-        // Coming from a child survey being saved for the first time, we only need to return one record rather than all
+    public function childRecordExists($universalId, $childRecordId = null): mixed
+    {
+        // After a child survey is saved for the first time, we only need to return the specific record rather than all for updates
         if(isset($childRecordId)){
             $params = [
                 "return_format" => "json",
@@ -166,10 +172,21 @@ class Child {
             ];
         }
 
-        if(!empty($additionalParams))
-            $params = array_merge($params, $additionalParams);
-
         $parentData = json_decode(REDCap::getData($params), true);
+
+        //Grab child project settings
+        $pSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
+        $trackingStatus = $pSettings['status-field'] ?? "submission_status";
+
+        /**
+         * Filter all child records that have a status of 0, 2, 3, or 4 so we do not update them (files and data)
+         * 0 -> incomplete / 2 -> processing locked updates / 3 -> complete / 4 -> unable to process
+         */
+        foreach ($parentData as $key => $rec) {
+            if (in_array($rec[$trackingStatus], ["0", "2", "3", "4"], true)) {
+                unset($parentData[$key]);
+            }
+        }
 
         if(count($parentData))
             return $parentData;
