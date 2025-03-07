@@ -198,14 +198,17 @@ class DashboardUtil
         return true;
     }
 
-    public function determineFileUploadFieldValues($projectId, $recordId){
+    public function determineFileUploadFieldValues($projectId, $recordId)
+    {
         $settings = $this->getEMSettings();
 
         // If file-fields are set, use them. Else default to 4 static fields
-        if(!empty($settings['file-field']) && count($settings['file-field']) > 0)
+        if (!empty($settings['file-field']) && count($settings['file-field']) > 0){
             $fields = $settings['file-field'];
-        else
-            $fields = ['protocol_upload', 'investigators_brochure', 'informed_consent', 'other_docs'];
+        } else {
+            $this->getModule()->emError("File fields not set");
+            return [];
+        }
 
         $queryParams = [
             "return_format" => "json",
