@@ -118,7 +118,7 @@ export function Dashboard() {
     const pagesActive = chunk(filteredIntakes, 3);
     const pagesInactive = chunk(filteredOutIntakes, 3);
     const tableData = {
-        head: ['UID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
+        head: ['ID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
@@ -130,7 +130,7 @@ export function Dashboard() {
     };
 
     const finishedTable = {
-        head: ['UID', 'Activity Change Date', 'Study Title', 'PI Name', 'Intake Details'],
+        head: ['ID', 'Activity Change Date', 'Study Title', 'PI Name', 'Intake Details'],
         body: pagesInactive[inactivePage - 1]?.map(item => [
             item?.intake_id,
             item?.active_change_date,
@@ -166,8 +166,6 @@ export function Dashboard() {
                 <Button
                     rightSection={<IconPlus size={20} />}
                     mb="md"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     component="a"
                     href={newRequestLink}
                 >New Request</Button>
