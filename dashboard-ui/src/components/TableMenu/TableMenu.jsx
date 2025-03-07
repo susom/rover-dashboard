@@ -4,6 +4,7 @@ import { useDisclosure } from '@mantine/hooks';
 import React, { useState } from "react";
 import "./TableMenu.css";
 
+// Dashboard deactivation menu
 export function TableMenu({rowData, toggleSuccess, toggleError}){
     const [opened, { open, close }] = useDisclosure(false);
     const [reason, setReason] = useState('')

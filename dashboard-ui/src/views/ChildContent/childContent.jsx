@@ -1,13 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react";
-// import { useDisclosure } from '@mantine/hooks';
-// import {IconExternalLink, IconInfoCircle} from '@tabler/icons-react';
-// import {useNavigate} from "react-router-dom";
-// import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
-// import { IconPlus } from '@tabler/icons-react';
-
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
 import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
-import {IconBook, IconExternalLink, IconInfoCircle, IconPlus} from "@tabler/icons-react";
+import {IconBook, IconExternalLink, IconInfoCircle, IconPlus, IconLockOpen2, IconLock} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -96,14 +90,57 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
     }
 
-    const filterStatuses = (num) => {
-        if(num === "0")
-            return "Incomplete"
-        else if(num === "2")
-            return "Complete"
-    }
+    const createLockTooltip = (num) => {
+        const isLocked = ["0", "2", "3", "4"].includes(num);
 
-    const renderChildModal = () => {
+        return (
+            <Tooltip
+                w={250}
+                multiline
+                withArrow
+                arrowSize={6}
+                label={isLocked
+                    ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
+                    : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
+                }
+            >
+                {isLocked ? <IconLock color="red" size={20} /> : <IconLockOpen2 color="green" size={20} />}
+            </Tooltip>
+        );
+    };
+
+
+    /**
+     *
+     * @param num
+     * @returns {string}
+     */
+    const createLabelForStatus = (num) => {
+        if (num === "2") {
+            return (
+                <Tooltip
+                    w={220}
+                    multiline
+                    withArrow
+                    arrowSize={6}
+                    label="This intake is currently being worked upon. Updates made to the unified intake will not propagate to this request"
+                >
+                    <p><i>Processing - Updates Locked</i></p>
+                </Tooltip>
+            );
+        }
+
+        return ({
+            "0": "Incomplete",
+            "1": "Processing",
+            "2": "Processing - Updates Locked",
+            "3": "Complete",
+            "4": "Unable to Process",
+            "5": "Received"
+        }[num] || "Received");
+    };
+
+    const renderChildViewModal = () => {
         const tab = {
             caption: 'Survey Details',
             head: ["Label", "Value"],
@@ -113,7 +150,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
 
         return (
-            <Table.ScrollContainer h="calc(80vh - 100px)">
+            <Table.ScrollContainer scrollbars="y" h="calc(80vh - 100px)">
                 <Table
                     stickyHeader
                     striped
@@ -124,8 +161,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     }
 
     let body = submissions.map(e => [
+        createLockTooltip(e?.child_survey_status),
         e.record_id,
-        filterStatuses(e?.child_survey_complete),
+        createLabelForStatus(e?.child_survey_status),
         e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
         e?.dashboard_submission_user ? e?.dashboard_submission_user : "N/A" ,
         renderInteraction(e)]
@@ -191,14 +229,14 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     >Confirm</Button>
                 </div>
             </Modal>
-            <div style={{ position: 'relative' }}>
+            <div>
                 <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
                 {renderRequestButton()}
                 <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
-                    {childOpened && renderChildModal()}
+                    {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
-                    columns={['Child ID', 'Request Submission', 'Submission Timestamp', 'Submitted By','Survey Link']}
+                    columns={['','Request Number', 'Submission Status', 'Submission Timestamp', 'Submitted By','Survey Link']}
                     body={body}
                 />
             </div>

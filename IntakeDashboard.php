@@ -10,6 +10,7 @@ require_once ("classes/DashboardUtil.php");
 
 use ExternalModules;
 use Exception;
+use Files;
 use REDCap;
 use Project;
 use Survey;
@@ -140,6 +141,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
      * @param int|NULL $response_id
      * @param int $repeat_instance
      * @return void
+     * @throws Exception
      */
     public function redcap_save_record(
         int    $project_id,
@@ -154,16 +156,35 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         //Functionality here serves to update child records in case edits are made on data-entry page (doesn't trigger survey complete hook)
         if(!isset($survey_hash)){ //Save record hook triggered from data-entry page only
             $parent_id = $this->getSystemSetting('parent-project');
+            $successFileMetadata = [];
 
             if($project_id === intval($parent_id)){ // Only trigger if parent intakes are updated
                 $pSettings = $this->getProjectSettings($parent_id);
+                $util = new DashboardUtil($this, $pSettings);
+
+                if($instrument === $pSettings['universal-survey-form-mutable']){ // Only have to handle file uploads on the mutable form
+                    if($pSettings['enable-file-copying']){ //If setting is enabled
+                        $file_fields = $util->checkFileChanges($project_id, $record);
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+
+                        //Update file field cache in parent here for subsequent saves
+                        $util->updateFileCache($parent_id, $record);
+                    }
+                }
 
                 //Iterate through all linked children and overwrite with new parent data
                 foreach($pSettings['project-id'] as $childProjectId) {
                     $child = new Child($this, $childProjectId, $parent_id, $pSettings);
 
-                    // Session data not included here, as only admins will be updating from this page, no need to pass last user to update
-                    $child->updateParentData($record);
+                    // Update record data for each child, copying from parent
+                    $child->updateParentData($record, $instrument);
+
+                    // If there were any downloaded files, copy them to each record / child combo
+                    if(count($successFileMetadata) > 0){
+                        foreach($successFileMetadata as $variable => $fileMetadata){
+                            $child->copyFileFromParent($fileMetadata, $variable, $record, null);
+                        }
+                    }
                 }
             }
         }
@@ -206,18 +227,33 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = json_decode(REDCap::getData($detailsParams), true);
             $completedIntake = reset($completedIntake);
+            $successFileMetadata = [];
+
             if(!empty($completedIntake)){
-                // Child survey has been saved, we have to copy data from the parent project
                 if($parent_id !== $project_id){
+                    // Child survey has been saved from dashboard for the first time, we have to copy data from the parent project
                     $child = new Child($this, $project_id, $parent_id, $pSettings);
                     $child->saveParentData($completedIntake['universal_id'], $record);
-//                    $child->saveParentData($record);
+
+                    if($pSettings['enable-file-copying']) {
+                        // Copy all mutable files over, no restriction as we know they don't exist yet
+                        $util = new DashboardUtil($this, $pSettings);
+                        $file_fields = $util->determineFileUploadFieldValues($parent_id, $completedIntake['universal_id']);
+                        $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+                    }
+
+                    // If there were any downloaded files, copy them to each record / child combo
+                    if(count($successFileMetadata) > 0){
+                        foreach($successFileMetadata as $variable => $fileMetadata){
+                            // Pass $record as the new Child ID -> this will restrict the scope to only updating the current record
+                            $child->copyFileFromParent($fileMetadata, $variable, $completedIntake['universal_id'], $record);
+                        }
+                    }
 
                 } else {
-
                     // Universal immutable survey form has been saved for the first time (new intake)
                     if($instrument === $pSettings['universal-survey-form-immutable']) {
-                        // Determine username
+                        // Determine username and set permissions for dashboard
                         $requesterUsername = $this->determineREDCapUsername($completedIntake['requester_sunet_sid'], $completedIntake['requester_email']);
                         if (!empty($requesterUsername)) {
                             $this->saveUser($requesterUsername, $completedIntake['record_id']);
@@ -233,17 +269,35 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                             );
                         }
 
-                    } else if($instrument === $pSettings['universal-survey-form-mutable']) { // Editable survey has been altered
+                    } else if($instrument === $pSettings['universal-survey-form-mutable']) {
+                        // Mutable survey has been altered via dashboard - Can occur infinite times
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
 
                         // Function will add new users / delete old users
                         $this->validateUserPermissions($project_id, $record, $event_name);
 
+                        if($pSettings['enable-file-copying']) {
+                            // File copy functionality
+                            $util = new DashboardUtil($this, $pSettings);
+                            $file_fields = $util->checkFileChanges($project_id, $record);
+                            $successFileMetadata = $util->saveFilesToTemp($file_fields, $parent_id);
+
+                            //Update file field cache in parent here for subsequent saves
+                            $util->updateFileCache($parent_id, $record);
+                        }
+
                         //Iterate through all linked children and overwrite with new parent data
                         foreach($pSettings['project-id'] as $childProjectId) {
                             $child = new Child($this, $childProjectId, $parent_id, $pSettings);
-                            $child->updateParentData($record);
+                            $child->updateParentData($record, $instrument);
+
+                            // For each file field -> update each child record file field
+                            if(count($successFileMetadata) > 0){
+                                foreach($successFileMetadata as $variable => $fileMetadata){
+                                    $child->copyFileFromParent($fileMetadata, $variable, $record, null);
+                                }
+                            }
                         }
                     }
                 }
@@ -293,7 +347,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $requiredChildPIDs = $this->getRequiredChildPIDs($pSettings);
             foreach($requiredChildPIDs as $childProjectId) {
                 $child = new Child($this, $childProjectId, $parent_id, $pSettings);
-                $child->updateParentData($completedIntake['record_id']);
+                $child->updateParentData($completedIntake['record_id'], $pSettings['universal-survey-form-immutable']);
             }
 
             return json_encode(["data" => $completedIntake, "success" => true]);
@@ -636,9 +690,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-immutable']);
             $mutableIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-mutable']);
-
             $requiredChildPIDs = $this->getRequiredChildPIDs($projectSettings);
-
 
             //Parse fields & convert labels for UI render of submitted form
             $pretty_immutable = $completedIntake[0];
@@ -729,16 +781,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         return $requiredChildPIDs;
     }
 
-    /**
-     * @param $key
-     * @param $value
-     * @return bool
-     */
-    private function isValidServiceKey($key, $value)
-    {
-        return preg_match('/^serv_map_\d+$/', $key) && $value === "1";
-    }
-
     //Creates the project-specific survey titles for a given array of Child PIDs
 
     private function generateSurveyTitles($universalId, $requiredChildPIDs): array
@@ -782,10 +824,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
-
             $child = new Child($this, $payload['child_pid'], $parent_id, $pSettings);
-
-            $submissions = $child->childRecordExists($payload['universal_id']);
+            $submissions = $child->allChildRecordsExist($payload['universal_id']);
 
             // Grab first form name for this child
             $mainSurvey = $child->getMainSurveyFormName();
@@ -794,7 +834,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             foreach($submissions as $in => $submission){
                 $completionVariable = $mainSurvey . "_complete";
                 if(isset($submission[$completionVariable]) && $submission[$completionVariable] !== "2"){
-
                     $surveyLink = $child->getSurveyLink($submission['record_id']);
                     $username = $_SESSION['username'];
                     $submissions[$in]['survey_url'] = "$surveyLink&dashboard_submission_user=$username";
@@ -804,7 +843,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
 
                 // Set default field to make it easier to render survey completion status on dashboard (form name agnostic)
-                $submissions[$in]['child_survey_complete'] = $submission[$completionVariable];
+                $submissions[$in]['child_survey_status'] = $this->determineChildSurveyStatus($submission, $completionVariable);
 
                 //Get pretty form to render submitted information
                 $du = new DashboardUtil($this, $pSettings);
@@ -819,47 +858,38 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     /**
-     * @param $universalId
-     * @param $requiredChildPIDs
-     * @return array
-     * @throws Exception
+     * @param $childRecordData
+     * @return string
+     * Merges Survey Completion Statuses (0,1,2) for the completed survey & predefined variable statuses into a single variable
      */
-    private function generateSurveyLinks($universalId, $requiredChildPIDs)
-    {
-        $surveyLinks = [];
+    public function determineChildSurveyStatus($childRecordData, $completionVariable){
+        if(!empty($childRecordData)){
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+            $trackingStatus = $pSettings['status-field'] ?? "submission_status";
 
-        foreach ($requiredChildPIDs as $childProjectId) {
-            $item = [];
-            $project = new \Project($childProjectId);
-            $childInstrument = $this->getChildInstrument($project);
-            $childEventId = $this->getChildEventId($project, $childInstrument);
+            //Field that corresponds to survey completion status (0,1,2)
+            $surveyCompletionStatus = $childRecordData[$completionVariable];
 
-            $check = $this->checkChildDataExists($universalId, $childProjectId);
-//            if (empty($check)) {
-            $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
-            $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
-//            } else {
-//                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
-//            }
+            //Field present on each child survey that admins of the project use to give transparency of their request
+            $backendProcessingStatus = $childRecordData[$trackingStatus];
 
-//            $item['complete'] = $check[$childInstrument . '_complete'];
-//            $item['child_pid'] = $childProjectId;
-            $item['form_name'] = reset($project->surveys)['form_name'];
-            $item['title'] = reset($project->surveys)['title'];
-            $surveyLinks[] = $item;
+            // Coded as "Incomplete" - User still has to finish and click submit, as the survey is not completed
+            if (in_array($surveyCompletionStatus, ["0", "1"])) return "0";
+
+            // Coded as "Received" - User has completed the survey , default status after this point
+            if (empty($backendProcessingStatus)) return "5";
+
+            $statusMap = [
+                "1", // Admins explicitly allow mutable data to overwrite this child
+                "2", //"Processing - updates locked", // Updates locked, same as above but prevents any further updates to child
+                "3", //"Complete"
+                "4", //"Unable to process"
+            ];
+
+            return in_array($backendProcessingStatus, $statusMap, true) ? $backendProcessingStatus : "5";
         }
-
-        return $surveyLinks;
-    }
-
-    /**
-     * @param $project
-     * @return mixed|string
-     */
-    private function getChildInstrument($project)
-    {
-        $surveyInfo = $project->surveys;
-        return reset($surveyInfo)['form_name']; // Assumes a single survey per child project
+        return "5";
     }
 
     /**

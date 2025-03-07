@@ -2,6 +2,7 @@
 namespace Stanford\IntakeDashboard;
 use REDCap;
 use Survey;
+use Files;
 
 class Child {
     private $module;
@@ -72,14 +73,20 @@ class Child {
         $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
         $childKeys = array_fill_keys($currentChildFields, 1);
 
+        // Grab parent (source of truth data)
         $parentData = json_decode(REDCap::getData($queryParams), true);
         $parentData = reset($parentData);
 
+        // Remove all extra fields not present on the first two surveys
         foreach($parentData as $field => $val){
             if(!isset($childKeys[$field])){
                 unset($parentData[$field]);
             }
         }
+
+        // Explicitly unset file-field-cache-json : not needed in children projects
+        if(isset($pSettings['file-field-cache-json']))
+            unset($parentData[$pSettings['file-field-cache-json']]);
 
         return $parentData;
     }
@@ -87,10 +94,18 @@ class Child {
     /** Function that is triggered upon mutable survey being updated
      *  Copies New Universal intake data to the child project records that are linked
      * @param $recordId String record_id of completed parent survey (universal id)
+     * @param $instrument
      * */
-    public function updateParentData($recordId){
+    public function updateParentData($recordId, $instrument){
         $childId = $this->getChildProjectId();
-        $foundChildRecords = $this->childRecordExists($recordId);
+        $pSettings = $this->getParentSettings();
+
+        if($instrument == $pSettings['universal-survey-form-immutable']){ //If updating immutable data (active/inactive options) we have to query every child regardless of activity
+            $foundChildRecords = $this->allChildRecordsExist($recordId);
+        } else { //Otherwise filter out the inactive projects
+            $foundChildRecords = $this->childRecordExists($recordId);
+        }
+
 
         if (!is_null($foundChildRecords)) {
             // Child records exist, update all of them
@@ -115,18 +130,63 @@ class Child {
         }
     }
 
-    // Query child project for any matching records given universal id
-    public function childRecordExists($universalId, $additionalParams = []){
+    /**
+     * @param $universalId
+     * @return void
+     * Returns record data for any matching records given universal id (deactivated intakes included)
+     */
+    public function allChildRecordsExist($universalId){
         $params = [
             "return_format" => "json",
             "project_id" => $this->getChildProjectId(),
             "filterLogic" => "[universal_id] = $universalId"
         ];
+        $parentData = json_decode(REDCap::getData($params), true);
 
-        if(!empty($additionalParams))
-            $params = array_merge($params, $additionalParams);
+        if(count($parentData))
+            return $parentData;
+        else
+            return null;
+    }
+
+    /**
+     * @param $universalId
+     * @param $childRecordId
+     * @return mixed|null
+     * Fetch child record data for any matching records given universal id (omits inactive intakes)
+     */
+    public function childRecordExists($universalId, $childRecordId = null): mixed
+    {
+        // After a child survey is saved for the first time, we only need to return the specific record rather than all for updates
+        if(isset($childRecordId)){
+            $params = [
+                "return_format" => "json",
+                "project_id" => $this->getChildProjectId(),
+                "filterLogic" => "[universal_id] = $universalId and [record_id] = $childRecordId and [intake_active] = 1"
+            ];
+        } else { // Regular request, return all linked children to this universal id
+            $params = [
+                "return_format" => "json",
+                "project_id" => $this->getChildProjectId(),
+                "filterLogic" => "[universal_id] = $universalId and [intake_active] = 1"
+            ];
+        }
 
         $parentData = json_decode(REDCap::getData($params), true);
+
+        //Grab child project settings
+        $pSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
+        $trackingStatus = $pSettings['status-field'] ?? "submission_status";
+
+        /**
+         * Filter all child records that have a status of 0, 2, 3, or 4 so we do not update them (files and data)
+         * 0 -> incomplete / 2 -> processing locked updates / 3 -> complete / 4 -> unable to process
+         */
+        foreach ($parentData as $key => $rec) {
+            if (in_array($rec[$trackingStatus], ["0", "2", "3", "4"], true)) {
+                unset($parentData[$key]);
+            }
+        }
 
         if(count($parentData))
             return $parentData;
@@ -313,5 +373,134 @@ class Child {
         $e = $this->getEventId($this->getParentProjectId(), $formName);
         $survey_id = $pro->forms[$formName]['survey_id'];
         return Survey::isResponseCompleted($survey_id, $recordId, $e, 1, true);
+    }
+
+    /**
+     * @param $docMetadata
+     * @param $fieldName
+     * @param $recordId //Universal ID
+     * @param null $newChildRecordId //Called from redcap_survey_complete to restrict copying all files from parent to a single new child record
+     * @return int
+     */
+    public function copyFileFromParent($docMetadata, $fieldName, $recordId, $newChildRecordId = null){
+        try {
+            $localSavePath = APP_PATH_TEMP . $docMetadata['doc_name'];
+            $doc_size = filesize($localSavePath);
+            $mime_type = $docMetadata['mime_type'];
+            $doc_name = $docMetadata['doc_name'];
+            $childId = $this->getChildProjectId();
+            $file_extension = getFileExt($docMetadata['doc_name']);
+
+            if(!file_exists($localSavePath)){ // Temp file doesn't exist, we cant do anything
+                return 0;
+            }
+
+            $childRecords = $this->childRecordExists($recordId, $newChildRecordId); //Fetch all matching records that require file update
+            if(is_null($childRecords) || sizeof($childRecords) == 0){ // No matching records with the same universal ID exist in this child project
+                $this->getModule()->emDebug("No matching records exist in child projectID: $childId for universalID : $recordId. Skipping copy");
+                return 0;
+            }
+
+            // If not an allowed file extension, then prevent uploading the file
+            if (!Files::fileTypeAllowed($docMetadata['doc_name'])) {
+                unlink($localSavePath);
+                $this->getModule()->emError("File type not allowed for upload.");
+                return 0;
+            }
+
+            // If filesize is too large, exit
+            if(($doc_size/1024/1024) > maxUploadSizeEdoc()){
+                unlink($localSavePath);
+                $this->getModule()->emError("File size exceeds maxUploadSizeEdoc.");
+                return 0;
+            }
+
+            // Iterate over each matching record in current child, creating file copy from parent and updating link tables
+            foreach($childRecords as $childRecord){
+                $stored_name = date('YmdHis') . "_pid" . ($childId ?: "0") . "_" . generateRandomHash(6) . getFileExt($docMetadata['doc_name'], true);
+                $result = 0;
+
+                // Upload file to either bucket storage or local edocs
+                if(!empty($GLOBALS['google_cloud_storage_api_bucket_name'])){
+                    $googleClient = Files::googleCloudStorageClient();
+                    $bucket = $googleClient->bucket($GLOBALS['google_cloud_storage_api_bucket_name']);
+
+                    // if pid sub-folder is enabled then upload the file under pid folder
+                    if($GLOBALS['google_cloud_storage_api_use_project_subfolder']){
+                        $stored_name = $this->getChildProjectId() . '/' . $stored_name;
+                    }
+
+                    $googleResp = $bucket->upload(file_get_contents($localSavePath), array('name' => $stored_name));
+                    $result = 1;
+                }else{
+                    //Save the data in the correct child location in edocs
+                    if (file_put_contents(EDOC_PATH . \Files::getLocalStorageSubfolder($childId, true) . $stored_name, file_get_contents($localSavePath))) {
+                        $result = 1;
+                    }
+                }
+
+                if($result){
+                    // Update 3 required tables to allow files to be seen on REDCap UI
+                    $docId = $this->updateEdocsMetadata($stored_name, $mime_type, $doc_name, $doc_size, $file_extension);
+                    if($docId){ //Updated successfully
+                        $res1 = $this->updateEdocsDataMapping($docId, $childRecord['record_id'], $fieldName);
+                        $res2 = $this->updateRedcapData($docId, $childRecord['record_id'], $fieldName);
+                    }
+                } else {
+                    $this->getModule()->emError("Failed to save file from local temp folder to $localSavePath");
+                    return 0;
+                }
+            }
+            return 1;
+        } catch (\Exception $e) {
+            $this->getModule()->emError('EXCEPTION IN COPY FILE FROM PARENT : ' . $e->getMessage());
+        }
+    }
+
+    public function updateEdocsMetadata($storedName, $mimeType, $docName, $docSize, $fileExtension){
+        $childId = $this->getChildProjectId();
+        $this->getModule()->emLog("Updating redcap_edocs_metadata with values: $storedName, $mimeType, $docName, $docSize, $fileExtension, $childId");
+
+        // Add file info the redcap_edocs_metadata table for retrieval later
+        $q = db_query("INSERT INTO redcap_edocs_metadata (stored_name, mime_type, doc_name, doc_size, file_extension, project_id, stored_date)
+						  VALUES ('" . db_escape($storedName) . "', '" . db_escape($mimeType) . "', '" . db_escape($docName) . "',
+						  '" . db_escape($docSize) . "', '" . db_escape($fileExtension) . "',
+						  " . ($childId ?: "null") . ", '".NOW."')");
+        if(!$q)
+            $this->getModule()->emError("Failed updating redcap_edocs_metadata with values: $storedName, $mimeType, $docName, $docSize, $fileExtension, $childId");
+
+        return (!$q ? 0 : db_insert_id());
+    }
+
+    public function updateEdocsDataMapping($docId, $childRecordId, $fieldName){
+        $childId = $this->getChildProjectId();
+        $pSettings = $this->getParentSettings();
+        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+        $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+        $query = "INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
+          VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '" . db_escape($eventId) . "',
+                  '" . db_escape((int) $childRecordId) . "', '" . db_escape($fieldName) . "', 1)";
+        $q = db_query($query);
+
+        if(!$q)
+            $this->getModule()->emError("Failed updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+
+        return (!$q ? 0 : db_insert_id());
+    }
+
+    public function updateRedcapData($docId, $childRecordId, $fieldName){
+        $childId = $this->getChildProjectId();
+        $pSettings = $this->getParentSettings();
+        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+        $dataTable = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($childId) : "redcap_data";
+        $this->getModule()->emLog("Updating $dataTable with values: $childId, $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
+        $q = db_query("INSERT INTO `" . $dataTable . "` (project_id, event_id, record, field_name, value, instance)
+               VALUES ('" . db_escape($childId) . "', '" . db_escape($eventId) . "', '" . db_escape((int)$childRecordId) . "', 
+                       '" . db_escape($fieldName) . "', '" . db_escape($docId) . "', NULL)");
+
+        if(!$q)
+            $this->getModule()->emError("Failed updating $dataTable with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+
+        return (!$q ? 0 : db_insert_id());
     }
 }

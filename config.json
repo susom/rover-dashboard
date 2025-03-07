@@ -98,6 +98,44 @@
             }
         },
         {
+            "key": "file-description",
+            "type": "descriptive",
+            "name": "<h5><strong>Files</strong></h5><i>The functionality below will relate to file fields on the mutable survey</i>",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
+        },
+        {
+            "key": "enable-file-copying",
+            "name": "<strong>Enable File copying</strong><br><i>Enables file copying between the parent intake and all linked children upon update",
+            "type": "checkbox",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "0"
+            }
+        },
+        {
+            "key": "file-field-cache-json",
+            "name": "<strong>File field cache JSON</strong><br><i>Field used to store file field JSON information. (Used to prevent unnecessary copies during survey saves)",
+            "type": "field-list",
+            "required": true,
+            "branchingLogic": {
+                "field": "enable-file-copying",
+                "value": "1"
+            }
+        },
+        {
+            "key": "file-field",
+            "name": "<strong>File field</strong><br><i>File field to be copied from this project to all linked children upon creation/update",
+            "type": "field-list",
+            "repeatable": true,
+            "branchingLogic": {
+                "field": "enable-file-copying",
+                "value": "1"
+            }
+        },
+        {
             "key": "child-project-list-description",
             "type": "descriptive",
             "name": "<h5><strong>Child Projects</strong></h5><i>Each child project below will be incorporated as possible projects to triage users to depending on universal intake answers</i>",
@@ -124,8 +162,17 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "key": "status-field",
+            "name": "<strong>Status Field</strong><br><i>The radio button field of child statuses reflected to researchers using the dashboard</i>",
+            "required": true,
+            "type": "field-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
         }
-
     ],
     "system-settings": [
         {

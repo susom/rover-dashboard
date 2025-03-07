@@ -101,17 +101,23 @@ export function IntakeDetail() {
                     </Table.Thead>
                     <Table.Tbody>
                         {currentModalData &&
-                            Object.entries(currentModalData).map(([key, v]) => (
-                                <Table.Tr
-                                    key={key}
-                                    style={{
-                                        backgroundColor: highlight.includes(v.label) && !v.value.length  ? "#ffeb3b" : "inherit",
-                                    }}
-                                >
-                                    <Table.Td>{v.label}</Table.Td>
-                                    <Table.Td>{v.value || ""}</Table.Td>
-                                </Table.Tr>
-                            ))}
+                            Object.entries(currentModalData).map(([key, v]) => {
+                                const isHighlighted = highlight.includes(v.label) && !v.value.length;
+                                const displayValue = v.value || (isHighlighted ? "Missing Value" : "");
+                                const isMissing = displayValue === "Missing Value";
+
+                                return (
+                                    <Table.Tr
+                                        key={key}
+                                        style={{ backgroundColor: isHighlighted ? "#ffeb3b" : "inherit" }}
+                                    >
+                                        <Table.Td>{v.label}</Table.Td>
+                                        <Table.Td style={isMissing ? { color: "red", fontWeight: "bold", fontStyle: "italic" } : {}}>
+                                            {displayValue}
+                                        </Table.Td>
+                                    </Table.Tr>
+                                );
+                            })}
                     </Table.Tbody>
                 </Table>
             </Table.ScrollContainer>
@@ -126,13 +132,11 @@ export function IntakeDetail() {
 
         })
             return (
-                <>
-                    <ChildContent
-                        immutableParentInfo={detail}
-                        mutableParentInfo={detailMutable}
-                        childInfo={act}
-                    />
-                </>
+                <ChildContent
+                    immutableParentInfo={detail}
+                    mutableParentInfo={detailMutable}
+                    childInfo={act}
+                />
             )
     }
 
@@ -175,11 +179,7 @@ export function IntakeDetail() {
 
                         {/* Tab Content */}
                         <Grid.Col span={9}>
-                            {/*<Card shadow="sm" p="lg">*/}
-                            {/*    <Card.Section>*/}
-                                    {data.length && renderContent()}
-                            {/*    </Card.Section>*/}
-                            {/*</Card>*/}
+                            {data.length && renderContent()}
                         </Grid.Col>
                     </Grid>
                 </Card>
@@ -227,9 +227,11 @@ export function IntakeDetail() {
         ) : (
             <>
                 <Text c="dimmed" size="sm">View or Edit prior survey submission:</Text>
-                    <Indicator disabled={!checkMutableIncomplete()} inline processing color="red" size={12}>
-                        <Button rightSection={<IconBook size={16} />} onClick={() => clickHandler(1)} variant="light" size="xs">View</Button>
-                    </Indicator>
+                    <Tooltip disabled={!checkMutableIncomplete()} multiline w={250} position="bottom-start" withArrow label="Please ensure all relevant files are uploaded before submitting a new request below">
+                        <Indicator disabled={!checkMutableIncomplete()} inline processing color="red" size={12}>
+                            <Button rightSection={<IconBook size={16} />} onClick={() => clickHandler(1)} variant="light" size="xs">View</Button>
+                        </Indicator>
+                    </Tooltip>
                     <Button
                         color="green"
                         rightSection={<IconExternalLink size={16} />}
@@ -327,7 +329,7 @@ export function IntakeDetail() {
 
                     {/* Right Section - Moved to Right */}
                     <div style={{ flex: 1, minWidth: '250px', textAlign: 'right' }}>
-                        <Title order={4}>Requester Details</Title>
+                        <Text c="dimmed" size="sm">Requester Details</Text>
                         {detail?.completion_ts && <Text mb="3px" c="dimmed" size="sm">Submitted {detail?.completion_ts}</Text>}
                         <Button rightSection={<IconBook size={16} />} onClick={() => clickHandler(0)} variant="light" size="xs">View</Button>
                     </div>

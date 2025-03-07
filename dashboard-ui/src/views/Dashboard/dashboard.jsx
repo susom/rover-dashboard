@@ -38,34 +38,11 @@ export function Dashboard() {
     }, [])
 
     const fetchIntakes = () => {
-        const useFakeData = false; // Set this to false to fetch real data
-
-        if (useFakeData) {
-            // Fake data for testing, remove this block when using real data
-            toggle();
-            setIntakes([
-                {
-                    intake_id: "12345",
-                    type: "Survey",
-                    research_title: "Sample Study 1",
-                    pi_name: "Dr. John Doe",
-                    intake_complete: "Incomplete",
-                },
-                {
-                    intake_id: "67890",
-                    type: "Interview",
-                    research_title: "Sample Study 2",
-                    pi_name: "Dr. Jane Smith",
-                    intake_complete: "Complete",
-                },
-            ]);
-        } else {
-            // Real data fetching
-            let jsmoModule;
-            if (import.meta?.env?.MODE !== 'development')
-                jsmoModule = ExternalModules.Stanford.IntakeDashboard;
-            jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
-        }
+        // Real data fetching
+        let jsmoModule;
+        if (import.meta?.env?.MODE !== 'development')
+            jsmoModule = ExternalModules.Stanford.IntakeDashboard;
+        jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
     };
 
     const transition = (id) => {
@@ -141,7 +118,7 @@ export function Dashboard() {
     const pagesActive = chunk(filteredIntakes, 3);
     const pagesInactive = chunk(filteredOutIntakes, 3);
     const tableData = {
-        head: ['UID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
+        head: ['ID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
@@ -153,7 +130,7 @@ export function Dashboard() {
     };
 
     const finishedTable = {
-        head: ['UID', 'Activity Change Date', 'Study Title', 'PI Name', 'Intake Details'],
+        head: ['ID', 'Activity Change Date', 'Study Title', 'PI Name', 'Intake Details'],
         body: pagesInactive[inactivePage - 1]?.map(item => [
             item?.intake_id,
             item?.active_change_date,
@@ -189,8 +166,6 @@ export function Dashboard() {
                 <Button
                     rightSection={<IconPlus size={20} />}
                     mb="md"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     component="a"
                     href={newRequestLink}
                 >New Request</Button>
@@ -209,6 +184,7 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
+                            className="main-table"
                             data={tableData}
                         />
                         <Pagination
@@ -236,6 +212,7 @@ export function Dashboard() {
                     </Card.Section>
                     <Card.Section>
                         <Table
+                            className="main-table"
                             data={finishedTable}
                         />
                         <Pagination

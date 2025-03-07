@@ -17,7 +17,7 @@ export function RequestTable({caption, columns, body}) {
         <>
             <Table.ScrollContainer type="native" scrollbars="y" mah={300}>
                 <Table
-                    m="sm"
+                    stickyHeader
                     data={tableConfig}
                     striped
                 />
