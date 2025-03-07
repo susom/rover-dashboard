@@ -116,20 +116,6 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
      * @returns {string}
      */
     const createLabelForStatus = (num) => {
-        if (num === "2") {
-            return (
-                <Tooltip
-                    w={220}
-                    multiline
-                    withArrow
-                    arrowSize={6}
-                    label="This intake is currently being worked upon. Updates made to the unified intake will not propagate to this request"
-                >
-                    <p><i>Processing - Updates Locked</i></p>
-                </Tooltip>
-            );
-        }
-
         return ({
             "0": "Incomplete",
             "1": "Processing",
