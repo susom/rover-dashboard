@@ -144,6 +144,16 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "key": "status-field",
+            "name": "<strong>Status Field</strong><br><i>The radio button field of child statuses reflected to researchers using the dashboard</i>",
+            "required": true,
+            "type": "field-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
         }
     ],
     "system-settings": [

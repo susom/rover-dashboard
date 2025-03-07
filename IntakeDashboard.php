@@ -826,9 +826,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
-
             $child = new Child($this, $payload['child_pid'], $parent_id, $pSettings);
-
             $submissions = $child->allChildRecordsExist($payload['universal_id']);
 
             // Grab first form name for this child
@@ -838,7 +836,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             foreach($submissions as $in => $submission){
                 $completionVariable = $mainSurvey . "_complete";
                 if(isset($submission[$completionVariable]) && $submission[$completionVariable] !== "2"){
-
                     $surveyLink = $child->getSurveyLink($submission['record_id']);
                     $username = $_SESSION['username'];
                     $submissions[$in]['survey_url'] = "$surveyLink&dashboard_submission_user=$username";
@@ -846,9 +843,9 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                 // Grab timestamp for dashboard display
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
-
+                $submissions[$in]['child_survey_status'] = $this->determineChildSurveyStatus($submission, $completionVariable);
                 // Set default field to make it easier to render survey completion status on dashboard (form name agnostic)
-                $submissions[$in]['child_survey_complete'] = $submission[$completionVariable];
+//                $submissions[$in]['child_survey_status'] = $submission[$completionVariable];
 
                 //Get pretty form to render submitted information
                 $du = new DashboardUtil($this, $pSettings);
@@ -863,47 +860,38 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     }
 
     /**
-     * @param $universalId
-     * @param $requiredChildPIDs
-     * @return array
-     * @throws Exception
+     * @param $childRecordData
+     * @return string
+     * Merges Survey Completion Statuses (0,1,2) for the completed survey & predefined variable statuses into a single variable
      */
-    private function generateSurveyLinks($universalId, $requiredChildPIDs)
-    {
-        $surveyLinks = [];
+    public function determineChildSurveyStatus($childRecordData, $completionVariable){
+        if(!empty($childRecordData)){
+            $parent_id = $this->getSystemSetting('parent-project');
+            $pSettings = $this->getProjectSettings($parent_id);
+            $trackingStatus = $pSettings['status-field'] ?? "submission_status";
 
-        foreach ($requiredChildPIDs as $childProjectId) {
-            $item = [];
-            $project = new \Project($childProjectId);
-            $childInstrument = $this->getChildInstrument($project);
-            $childEventId = $this->getChildEventId($project, $childInstrument);
+            //Field that corresponds to survey completion status (0,1,2)
+            $surveyCompletionStatus = $childRecordData[$completionVariable];
 
-            $check = $this->checkChildDataExists($universalId, $childProjectId);
-//            if (empty($check)) {
-            $recordId = $this->preCreateChildRecord($childProjectId, $universalId);
-            $item['url'] = REDCap::getSurveyLink($recordId, $childInstrument, $childEventId, 1, $childProjectId);
-//            } else {
-//                $item['url'] = REDCap::getSurveyLink($check['record_id'], $childInstrument, $childEventId, 1, $childProjectId);
-//            }
+            //Field present on each child survey that admins of the project use to give transparency of their request
+            $backendProcessingStatus = $childRecordData[$trackingStatus];
 
-//            $item['complete'] = $check[$childInstrument . '_complete'];
-//            $item['child_pid'] = $childProjectId;
-            $item['form_name'] = reset($project->surveys)['form_name'];
-            $item['title'] = reset($project->surveys)['title'];
-            $surveyLinks[] = $item;
+            // Coded as "Incomplete" - User still has to finish and click submit, as the survey is not completed
+            if (in_array($surveyCompletionStatus, ["0", "1"])) return "0";
+
+            // Coded as "Received" - User has completed the survey , default status after this point
+            if (empty($backendProcessingStatus)) return "5";
+
+            $statusMap = [
+                "1", // Admins explicitly allow mutable data to overwrite this child
+                "2", //"Processing - updates locked", // Updates locked, same as above but prevents any further updates to child
+                "3", //"Complete"
+                "4", //"Unable to process"
+            ];
+
+            return in_array($backendProcessingStatus, $statusMap, true) ? $backendProcessingStatus : "5";
         }
-
-        return $surveyLinks;
-    }
-
-    /**
-     * @param $project
-     * @return mixed|string
-     */
-    private function getChildInstrument($project)
-    {
-        $surveyInfo = $project->surveys;
-        return reset($surveyInfo)['form_name']; // Assumes a single survey per child project
+        return "5";
     }
 
     /**
