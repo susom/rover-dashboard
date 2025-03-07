@@ -264,7 +264,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         }
 
                     } else if($instrument === $pSettings['universal-survey-form-mutable']) {
-                        // Editable survey has been altered via dashboard - Can occur infinite times
+                        // Mutable survey has been altered via dashboard - Can occur infinite times
                         $proj = new Project($parent_id);
                         $event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
 
@@ -773,16 +773,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         return $requiredChildPIDs;
     }
 
-    /**
-     * @param $key
-     * @param $value
-     * @return bool
-     */
-    private function isValidServiceKey($key, $value)
-    {
-        return preg_match('/^serv_map_\d+$/', $key) && $value === "1";
-    }
-
     //Creates the project-specific survey titles for a given array of Child PIDs
 
     private function generateSurveyTitles($universalId, $requiredChildPIDs): array
@@ -843,9 +833,9 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                 // Grab timestamp for dashboard display
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
-                $submissions[$in]['child_survey_status'] = $this->determineChildSurveyStatus($submission, $completionVariable);
+
                 // Set default field to make it easier to render survey completion status on dashboard (form name agnostic)
-//                $submissions[$in]['child_survey_status'] = $submission[$completionVariable];
+                $submissions[$in]['child_survey_status'] = $this->determineChildSurveyStatus($submission, $completionVariable);
 
                 //Get pretty form to render submitted information
                 $du = new DashboardUtil($this, $pSettings);
