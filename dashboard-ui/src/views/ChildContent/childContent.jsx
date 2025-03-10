@@ -122,7 +122,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             "2": "Processing - Updates Locked",
             "3": "Complete",
             "4": "Unable to Process",
-            "5": "Received"
+            "5": "Processing - Awaiting additional updates",
+            "77": "Received",
+            "99": "Canceled"
         }[num] || "Received");
     };
 
