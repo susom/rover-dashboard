@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
 import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
-import {IconBook, IconExternalLink, IconInfoCircle, IconPlus, IconLockOpen2, IconLock} from "@tabler/icons-react";
+import {IconBook, IconExternalLink, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconPencilExclamation} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -91,20 +91,25 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     }
 
     const createLockTooltip = (num) => {
-        const isLocked = ["0", "2", "3", "4"].includes(num);
-
+        const incomplete = num === "0"
+        const isLocked = ["2", "3", "4", "99"].includes(num);
         return (
             <Tooltip
                 w={250}
                 multiline
                 withArrow
                 arrowSize={6}
-                label={isLocked
-                    ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
-                    : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
+                label={
+                    incomplete
+                        ? "This request has not been completed. Please complete the survey by following the edit button on the right and clicking 'Submit'"
+                        : isLocked
+                            ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
+                            : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
                 }
             >
-                {isLocked ? <IconLock color="red" size={20} /> : <IconLockOpen2 color="green" size={20} />}
+                {incomplete ? <IconPencilExclamation color="red" size={22} />
+                    : isLocked ? <IconLock color="grey" size={22} />
+                        : <IconLockOpen2 color="green" size={22} />}
             </Tooltip>
         );
     };
