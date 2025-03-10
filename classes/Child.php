@@ -56,6 +56,8 @@ class Child {
      */
     public function prepareChildRecord($universalId){
         $pSettings = $this->getParentSettings();
+        $cSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
+
         $queryParams = [
             "return_format" => "json",
             "project_id" => $this->getParentProjectId(),
@@ -68,10 +70,10 @@ class Child {
             $Proj = new \Project($this->getParentProjectId());
         }
 
-        // Grab all field names for first two required surveys
-        $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
-        $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
-        $childKeys = array_fill_keys($currentChildFields, 1);
+        // Grab all field names for first two required surveys from the parent
+        $currentParentFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
+        $currentParentFields = array_merge($currentParentFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
+        $childKeys = array_fill_keys($currentParentFields, 1);
 
         // Grab parent (source of truth data)
         $parentData = json_decode(REDCap::getData($queryParams), true);
@@ -81,6 +83,24 @@ class Child {
         foreach($parentData as $field => $val){
             if(!isset($childKeys[$field])){
                 unset($parentData[$field]);
+            }
+        }
+
+        // If the naming for the forms between parent / child no longer matches
+        if(!empty($cSettings['child-universal-survey-form-immutable']) && !empty($cSettings['child-universal-survey-form-mutable'])){
+            //Complete fields will not copy correctly, edit them
+            if($pSettings['universal-survey-form-immutable'] !== $cSettings['child-universal-survey-form-immutable']) {
+                $completeName = $pSettings['universal-survey-form-immutable'] . "_complete";
+                $newCompleteName = $cSettings['child-universal-survey-form-immutable'] . "_complete";
+                $parentData[$newCompleteName] = $parentData[$completeName];
+                unset($parentData[$completeName]);
+            }
+
+            if($pSettings['universal-survey-form-mutable'] !== $cSettings['child-universal-survey-form-mutable']){
+                $completeName = $pSettings['universal-survey-form-mutable'] . "_complete";
+                $newCompleteName = $cSettings['child-universal-survey-form-mutable'] . "_complete";
+                $parentData[$newCompleteName] = $parentData[$completeName];
+                unset($parentData[$completeName]);
             }
         }
 

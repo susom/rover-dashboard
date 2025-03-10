@@ -885,6 +885,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 "2", //"Processing - updates locked", // Updates locked, same as above but prevents any further updates to child
                 "3", //"Complete"
                 "4", //"Unable to process"
+                "99" // Canceled
             ];
 
             return in_array($backendProcessingStatus, $statusMap, true) ? $backendProcessingStatus : "5";
