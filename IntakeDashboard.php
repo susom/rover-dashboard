@@ -843,7 +843,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
 
                 // Set default field to make it easier to render survey completion status on dashboard (form name agnostic)
-                $submissions[$in]['child_survey_status'] = $this->determineChildSurveyStatus($submission, $completionVariable);
+                $submissions[$in]['child_survey_status'] = $child->determineChildSurveyStatus($submission, $completionVariable);
 
                 //Get pretty form to render submitted information
                 $du = new DashboardUtil($this, $pSettings);
@@ -855,41 +855,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         } catch (\Exception $e) {
             return $this->handleGlobalError($e);
         }
-    }
-
-    /**
-     * @param $childRecordData
-     * @return string
-     * Merges Survey Completion Statuses (0,1,2) for the completed survey & predefined variable statuses into a single variable
-     */
-    public function determineChildSurveyStatus($childRecordData, $completionVariable){
-        if(!empty($childRecordData)){
-            $parent_id = $this->getSystemSetting('parent-project');
-            $pSettings = $this->getProjectSettings($parent_id);
-            $trackingStatus = $pSettings['status-field'] ?? "submission_status";
-
-            //Field that corresponds to survey completion status (0,1,2)
-            $surveyCompletionStatus = $childRecordData[$completionVariable];
-
-            //Field present on each child survey that admins of the project use to give transparency of their request
-            $backendProcessingStatus = $childRecordData[$trackingStatus];
-
-            // Coded as "Incomplete" - User still has to finish and click submit, as the survey is not completed
-            if (in_array($surveyCompletionStatus, ["0", "1"])) return "0";
-
-            // Coded as "Received" - User has completed the survey , default status after this point
-            if (empty($backendProcessingStatus)) return "5";
-
-            $statusMap = [
-                "1", // Admins explicitly allow mutable data to overwrite this child
-                "2", //"Processing - updates locked", // Updates locked, same as above but prevents any further updates to child
-                "3", //"Complete"
-                "4", //"Unable to process"
-            ];
-
-            return in_array($backendProcessingStatus, $statusMap, true) ? $backendProcessingStatus : "5";
-        }
-        return "5";
     }
 
     /**

@@ -56,6 +56,8 @@ class Child {
      */
     public function prepareChildRecord($universalId){
         $pSettings = $this->getParentSettings();
+        $cSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
+
         $queryParams = [
             "return_format" => "json",
             "project_id" => $this->getParentProjectId(),
@@ -68,10 +70,10 @@ class Child {
             $Proj = new \Project($this->getParentProjectId());
         }
 
-        // Grab all field names for first two required surveys
-        $currentChildFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
-        $currentChildFields = array_merge($currentChildFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
-        $childKeys = array_fill_keys($currentChildFields, 1);
+        // Grab all field names for first two required surveys from the parent
+        $currentParentFields = REDCap::getFieldNames($pSettings['universal-survey-form-immutable']);
+        $currentParentFields = array_merge($currentParentFields, REDCap::getFieldNames($pSettings['universal-survey-form-mutable']));
+        $childKeys = array_fill_keys($currentParentFields, 1);
 
         // Grab parent (source of truth data)
         $parentData = json_decode(REDCap::getData($queryParams), true);
@@ -81,6 +83,24 @@ class Child {
         foreach($parentData as $field => $val){
             if(!isset($childKeys[$field])){
                 unset($parentData[$field]);
+            }
+        }
+
+        // If the naming for the forms between parent / child no longer matches
+        if(!empty($cSettings['child-universal-survey-form-immutable']) && !empty($cSettings['child-universal-survey-form-mutable'])){
+            //Complete fields will not copy correctly, edit them
+            if($pSettings['universal-survey-form-immutable'] !== $cSettings['child-universal-survey-form-immutable']) {
+                $completeName = $pSettings['universal-survey-form-immutable'] . "_complete";
+                $newCompleteName = $cSettings['child-universal-survey-form-immutable'] . "_complete";
+                $parentData[$newCompleteName] = $parentData[$completeName];
+                unset($parentData[$completeName]);
+            }
+
+            if($pSettings['universal-survey-form-mutable'] !== $cSettings['child-universal-survey-form-mutable']){
+                $completeName = $pSettings['universal-survey-form-mutable'] . "_complete";
+                $newCompleteName = $cSettings['child-universal-survey-form-mutable'] . "_complete";
+                $parentData[$newCompleteName] = $parentData[$completeName];
+                unset($parentData[$completeName]);
             }
         }
 
@@ -179,11 +199,11 @@ class Child {
         $trackingStatus = $pSettings['status-field'] ?? "submission_status";
 
         /**
-         * Filter all child records that have a status of 0, 2, 3, or 4 so we do not update them (files and data)
-         * 0 -> incomplete / 2 -> processing locked updates / 3 -> complete / 4 -> unable to process
+         * Filter all child records that have a status besides [1 / 5 / 77] so we do not update them (files and data)
+         * 1 - processing , 5 -> processing - awaiting additional updates , 77 -> default "Received" are only statuses that allow updating
          */
         foreach ($parentData as $key => $rec) {
-            if (in_array($rec[$trackingStatus], ["0", "2", "3", "4"], true)) {
+            if (in_array($rec[$trackingStatus], ["0", "2", "3", "4", "99"], true)) {
                 unset($parentData[$key]);
             }
         }
@@ -261,6 +281,42 @@ class Child {
         }
 
         return array_key_first($response['ids']);
+    }
+
+    /**
+     * @param $childRecordData
+     * @return string
+     * Merges Survey Completion Statuses (0,1,2) for the completed survey & predefined variable statuses into a single variable
+     */
+    public function determineChildSurveyStatus($childRecordData, $completionVariable){
+        if(!empty($childRecordData)){
+            $cSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
+            $trackingStatus = $cSettings['status-field'] ?? "submission_status";
+
+            //Field that corresponds to survey completion status (0,1,2)
+            $surveyCompletionStatus = $childRecordData[$completionVariable];
+
+            //Field present on each child survey that admins of the project use to give transparency of their request
+            $backendProcessingStatus = $childRecordData[$trackingStatus];
+
+            // Coded as "Incomplete" - User still has to finish and click submit, as the survey is not completed
+            if (in_array($surveyCompletionStatus, ["0", "1"])) return "0";
+
+            // Coded as "Received" - User has completed the survey , default status after this point
+            if (empty($backendProcessingStatus)) return "77";
+
+            $statusMap = [
+                "1", // Admins explicitly allow mutable data to overwrite this child
+                "2", //"Processing - updates locked", // Updates locked, same as above but prevents any further updates to child
+                "3", //"Complete"
+                "4", //"Unable to process"
+                "5", //"Processing - awaiting additional updates" - functionally the same as 1
+                "99" // Canceled
+            ];
+
+            return in_array($backendProcessingStatus, $statusMap, true) ? $backendProcessingStatus : "77";
+        }
+        return "77";
     }
 
     public function getModule()
@@ -474,8 +530,11 @@ class Child {
 
     public function updateEdocsDataMapping($docId, $childRecordId, $fieldName){
         $childId = $this->getChildProjectId();
+        $cSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
         $pSettings = $this->getParentSettings();
-        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+
+        $mutableFormName = $cSettings['child-universal-survey-form-mutable'] ?? $pSettings['universal-survey-form-mutable'];
+        $eventId = $this->getEventId($this->getChildProjectId(), $mutableFormName);
         $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
         $query = "INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
           VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '" . db_escape($eventId) . "',
@@ -490,8 +549,11 @@ class Child {
 
     public function updateRedcapData($docId, $childRecordId, $fieldName){
         $childId = $this->getChildProjectId();
+        $cSettings = $this->getModule()->getProjectSettings($this->getChildProjectId());
         $pSettings = $this->getParentSettings();
-        $eventId = $this->getEventId($this->getChildProjectId(), $pSettings['universal-survey-form-mutable']);
+        $mutableFormName = $cSettings['child-universal-survey-form-mutable'] ?? $pSettings['universal-survey-form-mutable'];
+
+        $eventId = $this->getEventId($this->getChildProjectId(), $mutableFormName);
         $dataTable = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($childId) : "redcap_data";
         $this->getModule()->emLog("Updating $dataTable with values: $childId, $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
         $q = db_query("INSERT INTO `" . $dataTable . "` (project_id, event_id, record, field_name, value, instance)

@@ -164,6 +164,26 @@
             ]
         },
         {
+            "key": "child-universal-survey-form-immutable",
+            "name": "<strong>Child immutable form</strong><br><i>The form immutable data from the parent intake is copied into</i>",
+            "required": true,
+            "type": "form-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
+        },
+        {
+            "key": "child-universal-survey-form-mutable",
+            "name": "<strong>Child mutable form</strong><br><i>The form mutable data from the parent intake is copied into</i>",
+            "required": true,
+            "type": "form-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
+        },
+        {
             "key": "status-field",
             "name": "<strong>Status Field</strong><br><i>The radio button field of child statuses reflected to researchers using the dashboard</i>",
             "required": true,
