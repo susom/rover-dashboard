@@ -89,7 +89,7 @@ export function IntakeDetail() {
     }
 
     const renderTable = () => {
-        const highlight = ["Protocol Title", "IRB Number", "PTA Number", "SPO Number", "OnCore Number", ]
+        const highlight = ["research_title","irb_number", "pta_number", "spo_number", "oncore_number", "account", "mnemonic_number"]
         return (
             <Table.ScrollContainer h={520}>
                 <Table stickyHeader striped>
@@ -102,7 +102,7 @@ export function IntakeDetail() {
                     <Table.Tbody>
                         {currentModalData &&
                             Object.entries(currentModalData).map(([key, v]) => {
-                                const isHighlighted = highlight.includes(v.label) && !v.value.length;
+                                const isHighlighted = highlight.includes(key) && !v.value;
                                 const displayValue = v.value || (isHighlighted ? "Missing Value" : "");
                                 const isMissing = displayValue === "Missing Value";
 
@@ -279,12 +279,9 @@ export function IntakeDetail() {
     const pi = detailMutable?.pi_f_name ? `Principal Investigator: ${detailMutable?.pi_f_name} ${detailMutable?.pi_l_name}` : '';
 
     const checkMutableIncomplete = () => {
-        const highlight = ["Protocol Title", "IRB Number", "PTA Number", "SPO Number", "OnCore Number"];
-
+        const highlight = ["research_title","irb_number", "pta_number", "spo_number", "oncore_number", "account", "mnemonic_number"]
         return pretty[1]
-            ? Object.values(pretty[1]).some(v => {
-                return highlight.includes(v.label) && !v.value.trim();
-            })
+            ? Object.entries(pretty[1]).some(([key, obj]) => (highlight.includes(key) && !obj.value))
             : false;
     }
 

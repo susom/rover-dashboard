@@ -107,9 +107,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                             : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
                 }
             >
-                {incomplete ? <IconPencilExclamation color="red" size={22} />
+                {incomplete ? <IconPencilExclamation color="grey" size={22} />
                     : isLocked ? <IconLock color="grey" size={22} />
-                        : <IconLockOpen2 color="green" size={22} />}
+                        : <IconLockOpen2 color="grey" size={22} />}
             </Tooltip>
         );
     };
