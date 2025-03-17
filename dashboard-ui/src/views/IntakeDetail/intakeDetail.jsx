@@ -140,50 +140,51 @@ export function IntakeDetail() {
             )
     }
 
-    const renderChildSurveys = () => {
-            return (
-                <Card withBorder shadow="sm" radius="md">
-                    {/* Right side - Unified Intake Complete Box (larger) */}
-                    {detailMutable?.complete === "2" && (
-                        <Box mb="md" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
-                            <Alert radius="lg" variant="outline" color="blue" icon={<IconInfoCircle size={24} />}>
-                                <Text size="sm" fw={500}>The information contained in the above surveys will be provided to each of the teams below when creating new requests.</Text>
-                                <Text size="sm" fw={500}>Editing the above submission will also update each of the linked requests below as changes are made.</Text>
-                                <Text size="sm" fw={500}>Please ensure your Unified Intake details are correct prior to submitting a new request</Text>
-                            </Alert>
-                        </Box>
-                    )}
-                    <Grid gutter="md">
-                        {/* Tabs */}
-                        <Grid.Col
-                            span={3}
-                            style={{
-                                backgroundColor: "#f8f9fa",
-                                padding: "20px",
-                                borderRadius: "8px",
-                            }}
-                        >
-                            <Stack spacing="md">
-                                {data?.map((tab) => (
-                                    <Button
-                                        key={tab?.title}
-                                        variant={activeTab === tab.title ? "filled" : "light"}
-                                        fullWidth
-                                        onClick={() => setActiveTab(tab?.title)}
-                                    >
-                                        {tab?.title}
-                                    </Button>
-                                ))}
-                            </Stack>
-                        </Grid.Col>
+    const bottomBox = () => {
+        console.log(data)
+        return (
+            <Card withBorder shadow="sm" radius="md">
+                {/* Right side - Unified Intake Complete Box (larger) */}
+                {detailMutable?.complete === "2" && (
+                    <Box mb="md" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
+                        <Alert radius="lg" variant="outline" color="blue" icon={<IconInfoCircle size={24} />}>
+                            <Text size="sm" fw={500}>The information contained in the survey above will be provided to each request submitted below</Text>
+                            <Text size="sm" fw={500}>Editing the submission above will also update each of the linked requests below as changes are made</Text>
+                            <Text size="sm" fw={500}>Please ensure your Unified Intake details are correct prior to submitting a new request</Text>
+                        </Alert>
+                    </Box>
+                )}
+                <Grid gutter="md">
+                    {/* Tabs - Services */}
+                    <Grid.Col
+                        span={3}
+                        style={{
+                            backgroundColor: "#f8f9fa",
+                            padding: "20px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <Stack spacing="md">
+                            {data?.map((tab) => (
+                                <Button
+                                    key={tab?.title}
+                                    variant={activeTab === tab.title ? "filled" : "light"}
+                                    fullWidth
+                                    onClick={() => setActiveTab(tab?.title)}
+                                >
+                                    {tab?.title}
+                                </Button>
+                            ))}
+                        </Stack>
+                    </Grid.Col>
 
-                        {/* Tab Content */}
-                        <Grid.Col span={9}>
-                            {data.length && renderContent()}
-                        </Grid.Col>
-                    </Grid>
-                </Card>
-            )
+                    {/* Tab Content */}
+                    <Grid.Col span={9}>
+                        {data.length && renderContent()}
+                    </Grid.Col>
+                </Grid>
+            </Card>
+        )
     }
 
     const renderMutableSection = () => {
@@ -247,7 +248,7 @@ export function IntakeDetail() {
             </>
         );
     };
-    const card1 = () => {
+    const topBox = () => {
         return (
             <Card withBorder shadow="sm" radius="md" my="sm">
                 <Flex justify="space-between" align="flex-start">
@@ -335,9 +336,9 @@ export function IntakeDetail() {
                 <Modal size="80%" opened={modalOpen} onClose={close} title="Requester Information">
                     {modalOpen && renderTable()}
                 </Modal>
-                {card1()}
+                {topBox()}
                 <Divider label="SHC Services" labelPosition="center" mb="sm" />
-                {renderChildSurveys()}
+                {bottomBox()}
             </AppShell.Main>
         </AppShell>
     );

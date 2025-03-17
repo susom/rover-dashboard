@@ -32,6 +32,9 @@ export function Dashboard() {
     const [activePage, setActivePage] = useState(1);
     const [inactivePage, setInactivePage] = useState(1);
 
+    // Sorting
+    const [sortColumn, setSortColumn] = useState(null);
+    const [sortDirection, setSortDirection] = useState("asc"); // 'asc' or 'desc'
 
     useEffect(() => {
         fetchIntakes()
@@ -102,6 +105,50 @@ export function Dashboard() {
         )
     }
 
+    // Only enable sorting for these columns
+    const sortableColumns = ["ID", "Submission Date", "Study Title"]
+
+    // Mapping of column headers to object keys
+    const columnKeyMap = {
+        "ID": "intake_id",
+        "Submission Date": "completion_timestamp",
+        "Study Title": "research_title",
+    }
+
+    // Function to handle sorting when a column header is clicked
+    const handleSort = (columnIndex) => {
+        if (sortColumn === columnIndex) {
+            setSortDirection(sortDirection === "asc" ? "desc" : "asc"); // Toggle sorting order
+        } else {
+            setSortColumn(columnIndex);
+            setSortDirection("asc"); // Default to ascending when switching columns
+        }
+    }
+
+    // Function to sort table data
+    const getSortedData = () => {
+        // Sort the entire filtered data (not just the current page)
+        if (!sortColumn || !columnKeyMap[sortColumn]) return filteredIntakes; // Return original order if no sorting is applied
+
+        const key = columnKeyMap[sortColumn];
+        return [...filteredIntakes].sort((a, b) => {
+
+            let aValue = a[key] ?? "";
+            let bValue = b[key] ?? "";
+
+            // Convert numeric fields to numbers for proper sorting
+            if (!isNaN(aValue) && !isNaN(bValue)) {
+                aValue = Number(aValue);
+                bValue = Number(bValue);
+                return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+            }
+
+            return sortDirection === "asc"
+                ? aValue.toString().localeCompare(bValue.toString())
+                : bValue.toString().localeCompare(aValue.toString());
+        });
+    }
+
     const chunk = (array, size) => {
         if (!array.length) {
             return [];
@@ -114,11 +161,13 @@ export function Dashboard() {
     const filteredIntakes = intakes?.filter(item => item.intake_active !== "0") || [];
     const filteredOutIntakes = intakes?.filter(item => item.intake_active === "0") || [];
 
-    // Chunk the filteredIntakes array into pages
-    const pagesActive = chunk(filteredIntakes, 3);
-    const pagesInactive = chunk(filteredOutIntakes, 3);
+    // Sort the entire filteredIntakes array first, then chunk it into pages
+    const sortedIntakes = getSortedData();  // Sort the entire filtered data
+    const pagesActive = chunk(sortedIntakes, 6);  // Chunk sorted data
+    const pagesInactive = chunk(filteredOutIntakes, 3);  // Chunk inactive data
+
     const tableData = {
-        head: ['ID', 'Initial Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
+        head: ['ID', 'Submission Date', 'Study Title', 'PI Name', 'Intake Details', 'More'],
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
@@ -170,7 +219,7 @@ export function Dashboard() {
                     href={newRequestLink}
                 >New Request</Button>
                 {error && <Blockquote mb="md" color="red"><strong>Error: </strong>{error}</Blockquote>}
-                <Card withBorder shadow="sm" radius="md">
+                <Card id="active-card" withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <Text fw={500}>Active</Text>
@@ -182,11 +231,34 @@ export function Dashboard() {
                             {loading && <Loader size={32} />}
                         </div>
                     </Card.Section>
-                    <Card.Section>
-                        <Table
-                            className="main-table"
-                            data={tableData}
-                        />
+                    <Card.Section className="table-section">
+                        <Table mt="sm" className="main-table">
+                            <Table.Thead>
+                            <Table.Tr>
+                                {tableData.head.map((col) => (
+                                    <Table.Th
+                                        key={col}
+                                        onClick={() => sortableColumns.includes(col) && handleSort(col)} // Only trigger sorting for sortable columns
+                                        className={sortableColumns.includes(col) ? 'sortable-column' : ''}
+                                        style={{
+                                            cursor: sortableColumns.includes(col) ? "pointer" : "default", // Set cursor to pointer for sortable columns
+                                        }}
+                                    >
+                                        {col} {sortColumn === col ? (sortDirection === "asc" ? "↑" : "↓") : sortableColumns.includes(col) ? "⇅" : ""}
+                                    </Table.Th>
+                                ))}
+                            </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                            {tableData.body.map((row, rowIndex) => (
+                                <Table.Tr key={rowIndex}>
+                                    {row.map((cell, cellIndex) => (
+                                        <Table.Td key={cellIndex}>{cell}</Table.Td>
+                                    ))}
+                                </Table.Tr>
+                            ))}
+                            </Table.Tbody>
+                        </Table>
                         <Pagination
                             total={pagesActive.length}
                             value={activePage}
