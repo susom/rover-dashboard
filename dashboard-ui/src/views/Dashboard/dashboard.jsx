@@ -244,7 +244,7 @@ export function Dashboard() {
                                             cursor: sortableColumns.includes(col) ? "pointer" : "default", // Set cursor to pointer for sortable columns
                                         }}
                                     >
-                                        {col} {sortColumn === col ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                                        {col} {sortColumn === col ? (sortDirection === "asc" ? "↑" : "↓") : sortableColumns.includes(col) ? "⇅" : ""}
                                     </Table.Th>
                                 ))}
                             </Table.Tr>
