@@ -91,6 +91,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     }
 
     const createLockTooltip = (num) => {
+        if(immutableParentInfo?.intake_active === "0")
+            return;
+
         const incomplete = num === "0"
         const isLocked = ["2", "3", "4", "99"].includes(num);
         return (
