@@ -545,7 +545,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $proj = new Project($parent_id);
             $full_user_event_name = $this->generateREDCapEventName($proj, $pSettings['user-info-event']);
             $full_intake_event_name = $this->generateREDCapEventName($proj, $pSettings['universal-survey-event']);
-            // Fetch all intake IDs for the given user
+
+            // Fetch all intake IDs for the given user from the user event
             $initialParams = [
                 "return_format" => "json",
                 "project_id" => $parent_id,
@@ -565,7 +566,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             // Extract intake IDs from the response
             $intakeIds = array_column($userIntakes, 'intake_id');
 
-            // Fetch additional details for each intake ID
+            // Fetch actual record data for each linked intake for user
             $detailsParams = [
                 "return_format" => "json",
                 "project_id" => $parent_id,
@@ -576,7 +577,9 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $intakeDetails = json_decode(REDCap::getData($detailsParams), true);
 
             // Merge additional information into the user's intake data
-            foreach ($userIntakes as &$intake) {
+            foreach ($userIntakes as $index => &$intake) {
+                $matchFound = false;
+
                 foreach ($intakeDetails as $detail) {
                     if ($detail['record_id'] === $intake['intake_id']) {
                         $survey_id = $proj->forms[$pSettings['universal-survey-form-immutable']]['survey_id'];
@@ -587,10 +590,19 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         $intake['research_title'] = $detail['research_title'] ?? null;
                         $intake['intake_active'] = $detail['intake_active'] ?? null;
                         $intake['active_change_date'] = $detail['active_change_date'] ?? null;
+
+                        $matchFound = true;
                         break;
                     }
                 }
+
+                //No match means the record is deleted, unset the entry
+                if(!$matchFound)
+                    unset($userIntakes[$index]);
             }
+
+            // Reset array keys to be sequential after unsetting elements
+            $userIntakes = array_values($userIntakes);
 
             return json_encode([
                 "data" => $userIntakes,
@@ -641,14 +653,14 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $userIntakes = json_decode(REDCap::getData($params), true);
 
-            // Iterate over to determine if current user has linked access to detail form
-            foreach ($userIntakes as $submission) {
-                if ($submission['intake_id'] === $uid) {
-                    return $this->fetchRequiredSurveys($payload);
-                }
+            // Extract the intake_id column for quick lookup
+            $intakeIds = array_column($userIntakes, 'intake_id');
+
+            if (in_array($uid, $intakeIds)) {
+                return $this->fetchRequiredSurveys($payload);
             }
 
-            $this->emDebug("User $username attempting to access intakes for UID $uid, they have no access");
+            $this->emDebug("User $username attempting to access intakes for UID $uid, they have no access. Redirecting...");
             return json_encode([
                 "success" => false
             ]);
@@ -690,6 +702,11 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $completedIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-immutable']);
             $mutableIntake = $this->fetchParentRecordData($parentId, $payload['uid'], $projectSettings['universal-survey-event'], $projectSettings['universal-survey-form-mutable']);
+
+            //Record missing , cannot find intake data
+            if(empty($completedIntake) || empty($mutableIntake))
+                throw new \Exception("No completed-intakes for username $payload[username], record_id: $payload[uid] redirecting");
+
             $requiredChildPIDs = $this->getRequiredChildPIDs($projectSettings);
 
             //Parse fields & convert labels for UI render of submitted form
