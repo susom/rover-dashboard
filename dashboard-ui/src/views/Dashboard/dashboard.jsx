@@ -33,8 +33,8 @@ export function Dashboard() {
     const [inactivePage, setInactivePage] = useState(1);
 
     // Sorting
-    const [sortColumn, setSortColumn] = useState(null);
-    const [sortDirection, setSortDirection] = useState("asc"); // 'asc' or 'desc'
+    const [sortColumn, setSortColumn] = useState("ID");
+    const [sortDirection, setSortDirection] = useState("desc"); // 'asc' or 'desc'
 
     useEffect(() => {
         fetchIntakes()
@@ -106,13 +106,13 @@ export function Dashboard() {
     }
 
     // Only enable sorting for these columns
-    const sortableColumns = ["ID", "Submission Date", "Study Title"]
+    const sortableColumns = ["ID", "Submission Date", "PI Name"]
 
     // Mapping of column headers to object keys
     const columnKeyMap = {
         "ID": "intake_id",
         "Submission Date": "completion_timestamp",
-        "Study Title": "research_title",
+        "PI Name": "pi_name"
     }
 
     // Function to handle sorting when a column header is clicked
@@ -232,14 +232,15 @@ export function Dashboard() {
                         </div>
                     </Card.Section>
                     <Card.Section className="table-section">
-                        <Table mt="sm" className="main-table">
+                        <Table className="main-table">
                             <Table.Thead>
                             <Table.Tr>
                                 {tableData.head.map((col) => (
                                     <Table.Th
                                         key={col}
                                         onClick={() => sortableColumns.includes(col) && handleSort(col)} // Only trigger sorting for sortable columns
-                                        className={sortableColumns.includes(col) ? 'sortable-column' : ''}
+                                        className={`${sortableColumns.includes(col) ? 'sortable-column' : ''}
+                                            ${sortColumn === col ? "active-column" : ""}`}
                                         style={{
                                             cursor: sortableColumns.includes(col) ? "pointer" : "default", // Set cursor to pointer for sortable columns
                                         }}
