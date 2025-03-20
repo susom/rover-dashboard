@@ -4,6 +4,7 @@ import {
     Button,
     Pagination,
     Card,
+    Group,
     ActionIcon,
     Table,
     Text,
@@ -13,7 +14,7 @@ import {
     List,
     Loader,
     Tooltip,
-    rem
+    rem, Alert
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
@@ -202,32 +203,36 @@ export function Dashboard() {
                 style={{backgroundColor: 'rgb(248,249,250)'}}
                 h="calc(100vh - 55px)" //Prevent UI from scrolling under
             >
-                <Title order={3}>Welcome to your intake dashboard</Title>
-                <Text c="dimmed">Logged in as: {globalUsername}</Text>
-                <Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>
+                <Title order={3}>Research Intake Dashboard</Title>
+                <Text mb="md" c="dimmed">Welcome, {globalUsername}!</Text>
+                {/*<Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>*/}
+                {/*    <Text mb="sm" fw={700} c="blue">Helpful Tips</Text>*/}
+                {/*    <List size="sm">*/}
+                {/*        <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>*/}
+                {/*        <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>*/}
+                {/*        <List.Item>Missing a submission? Please contact your PI</List.Item>*/}
+                {/*    </List>*/}
+                {/*</Blockquote>*/}
+                <Alert title="Helpful Tips" radius="lg" color="blue" icon={<IconInfoCircle size={24} />}>
                     <List size="sm">
                         <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
                         <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>
                         <List.Item>Missing a submission? Please contact your PI</List.Item>
                     </List>
-                </Blockquote>
+                </Alert>
                 <Divider my="md" />
-                <Button
-                    rightSection={<IconPlus size={20} />}
-                    mb="md"
-                    component="a"
-                    href={newRequestLink}
-                >New Request</Button>
                 {error && <Blockquote mb="md" color="red"><strong>Error: </strong>{error}</Blockquote>}
                 <Card id="active-card" withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text fw={500}>Active</Text>
-                            <Tooltip label="List of intakes you have been added to">
-                                <ActionIcon variant="subtle">
-                                    <IconQuestionMark stroke={1.5}/>
-                                </ActionIcon>
-                            </Tooltip>
+                            <Text fw={500}>Active Research Projects</Text>
+                            <Group justify="flex-end">
+                                <Button
+                                    rightSection={<IconPlus size={20} />}
+                                    component="a"
+                                    href={newRequestLink}
+                                >New Request</Button>
+                            </Group>
                             {loading && <Loader size={32} />}
                         </div>
                     </Card.Section>
@@ -238,12 +243,9 @@ export function Dashboard() {
                                 {tableData.head.map((col) => (
                                     <Table.Th
                                         key={col}
-                                        onClick={() => sortableColumns.includes(col) && handleSort(col)} // Only trigger sorting for sortable columns
-                                        className={`${sortableColumns.includes(col) ? 'sortable-column' : ''}
-                                            ${sortColumn === col ? "active-column" : ""}`}
-                                        style={{
-                                            cursor: sortableColumns.includes(col) ? "pointer" : "default", // Set cursor to pointer for sortable columns
-                                        }}
+                                        onClick={() => sortableColumns.includes(col) && handleSort(col)}
+                                        className={`${sortableColumns.includes(col) ? 'sortable-column' : ''} ${sortColumn === col ? "active-column" : ""}`}
+                                        style={{ cursor: sortableColumns.includes(col) ? "pointer" : "default"}}
                                     >
                                         {col} {sortColumn === col ? (sortDirection === "asc" ? "↑" : "↓") : sortableColumns.includes(col) ? "⇅" : ""}
                                     </Table.Th>
@@ -260,21 +262,21 @@ export function Dashboard() {
                             ))}
                             </Table.Tbody>
                         </Table>
-                        <Pagination
-                            total={pagesActive.length}
-                            value={activePage}
-                            onChange={setActivePage}
-                            m="lg"
-                        />
+
                     </Card.Section>
                 </Card>
-
-                <div style={{marginTop: '60px'}}></div>
-
+                <Group justify="flex-end">
+                    <Pagination
+                        m="lg"
+                        total={pagesActive.length}
+                        value={activePage}
+                        onChange={setActivePage}
+                    />
+                </Group>
                 <Card withBorder shadow="sm" radius="md" id="inactive-table">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text fw={500}>Inactive</Text>
+                            <Text fw={500}>Inactive Research Projects</Text>
                             <Tooltip label="List of deactivated intake projects - these entries have no dashboard functionality">
                                 <ActionIcon variant="subtle">
                                     <IconQuestionMark stroke={1.5}/>
@@ -288,34 +290,18 @@ export function Dashboard() {
                             className="main-table"
                             data={finishedTable}
                         />
-                        <Pagination
-                            total={pagesInactive.length}
-                            value={inactivePage}
-                            onChange={setInactivePage}
-                            m="lg"
-                        />
+
                     </Card.Section>
                 </Card>
-
+                <Group justify="flex-end">
+                    <Pagination
+                        total={pagesInactive.length}
+                        value={inactivePage}
+                        onChange={setInactivePage}
+                        m="lg"
+                    />
+                </Group>
             </AppShell.Main>
         </AppShell>
-
     )
-    // return (
-    //     <div style={{width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', padding: '30px'}}>
-    //         <Grid style={{height: '100%'}}>
-    //             <Grid.Col span={12} style={{padding: 0}}>
-    //                 <Card shadow="sm" p="lg" style={{height: '100%'}}>
-    //                     <Text align="center" size="xl" weight={700}>
-    //                         Welcome to your intake dashboard!
-    //                     </Text>
-    //                     <Table
-    //                         striped
-    //                         data={tableData}
-    //                     />
-    //                 </Card>
-    //             </Grid.Col>
-    //         </Grid>
-    //     </div>
-    // );
 }
