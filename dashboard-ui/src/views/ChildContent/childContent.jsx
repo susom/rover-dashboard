@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
-import {IconBook, IconExternalLink, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconPencilExclamation} from "@tabler/icons-react";
+import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
+import {IconBook, IconPencil, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconMessage2Exclamation} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -65,7 +65,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     target="_blank"
                     rel="noopener noreferrer"
                     href={data.survey_url}
-                    rightSection={<IconExternalLink size={20} />}
+                    rightSection={<IconPencil size={20} />}
                 >
                     Edit
                 </Button>
@@ -110,9 +110,9 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                             : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
                 }
             >
-                {incomplete ? <IconPencilExclamation color="grey" size={22} />
-                    : isLocked ? <IconLock color="grey" size={22} />
-                        : <IconLockOpen2 color="grey" size={22} />}
+                {incomplete ? <IconMessage2Exclamation color="grey" size={24} />
+                    : isLocked ? <IconLock color="grey" size={24} />
+                        : <IconLockOpen2 color="grey" size={24} />}
             </Tooltip>
         );
     };
@@ -157,7 +157,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     }
 
     let body = submissions.map(e => [
-        createLockTooltip(e?.child_survey_status),
+        // createLockTooltip(e?.child_survey_status),
         e.record_id,
         createLabelForStatus(e?.child_survey_status),
         e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
@@ -170,21 +170,8 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
 
         if(immutableParentInfo?.intake_active === "0") { //If deactivated
             return (
-                <Tooltip label="This intake is inactive, no requests can be submitted">
-                    <Button
-                        onClick={e => e.preventDefault()}
-                        rightSection={<IconPlus size={20} />}
-                        component="a"
-                        m="sm"
-                        data-disabled
-                        disabled
-                    >New Request</Button>
-                </Tooltip>
-            )
-        } else {
-            if(mutableParentInfo?.complete !== "2") {
-                return (
-                    <Tooltip label="Please complete universal survey II">
+                <Group justify="flex-end">
+                    <Tooltip label="This intake is inactive, no requests can be submitted">
                         <Button
                             onClick={e => e.preventDefault()}
                             rightSection={<IconPlus size={20} />}
@@ -194,15 +181,34 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                             disabled
                         >New Request</Button>
                     </Tooltip>
+                </Group>
+            )
+        } else {
+            if(mutableParentInfo?.complete !== "2") {
+                return (
+                    <Group justify="flex-end">
+                        <Tooltip label="Please complete universal survey II">
+                            <Button
+                                onClick={e => e.preventDefault()}
+                                rightSection={<IconPlus size={20} />}
+                                component="a"
+                                m="sm"
+                                data-disabled
+                                disabled
+                            >New Request</Button>
+                        </Tooltip>
+                    </Group>
                 )
             } else {
                 return (
-                    <Button
-                        onClick={open}
-                        rightSection={<IconPlus size={20} />}
-                        component="a"
-                        m="sm"
-                    >New Request</Button>
+                    <Group justify="flex-end">
+                        <Button
+                            onClick={open}
+                            rightSection={<IconPlus size={20} />}
+                            component="a"
+                            m="sm"
+                        >New Request</Button>
+                    </Group>
                 )
             }
         }
@@ -232,7 +238,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
-                    columns={['','Request Number', 'Submission Status', 'Submission Timestamp', 'Submitted By','Survey Link']}
+                    columns={['Request Number', 'Status', 'Submission Timestamp', 'Submitted By','Survey Link']}
                     body={body}
                 />
             </div>
