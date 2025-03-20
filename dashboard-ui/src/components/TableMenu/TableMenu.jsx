@@ -22,7 +22,7 @@ export function TableMenu({rowData, toggleSuccess, toggleError}){
 
     const renderActiveItem = () => {
         const isDeactivated = rowData?.intake_active === "0";
-        const activeLabel = "Restricts functionality & editing You can reactivate at any time"
+        const activeLabel = "Restricts functionality & editing"
         const inactiveLabel = "Enables detail page navigation & editing"
 
         return (
