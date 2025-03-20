@@ -18,11 +18,11 @@ import {
     Stack,
     Title,
     Divider,
-    Tooltip,
+    Tooltip, List, Blockquote,
 } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { AppHeader } from "../../components/AppHeader/appHeader";
-import { IconBook, IconExternalLink, IconCheck, IconX, IconInfoCircle } from '@tabler/icons-react';
+import { IconBook, IconExternalLink, IconCheck, IconX, IconInfoCircle, IconPencil } from '@tabler/icons-react';
 import {useNavigate, useParams} from "react-router-dom";
 import {ChildContent} from "../ChildContent/childContent.jsx";
 
@@ -141,19 +141,29 @@ export function IntakeDetail() {
     }
 
     const bottomBox = () => {
-        console.log(data)
         return (
             <Card withBorder shadow="sm" radius="md">
                 {/* Right side - Unified Intake Complete Box (larger) */}
                 {detailMutable?.complete === "2" && (
                     <Box mb="md" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
-                        <Alert radius="lg" variant="outline" color="blue" icon={<IconInfoCircle size={24} />}>
-                            <Text size="sm" fw={500}>The information contained in the survey above will be provided to each request submitted below</Text>
-                            <Text size="sm" fw={500}>Editing the submission above will also update each of the linked requests below as changes are made</Text>
-                            <Text size="sm" fw={500}>Please ensure your Unified Intake details are correct prior to submitting a new request</Text>
+                        {/*<Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>*/}
+                        {/*    <Text mb="sm" fw={700} c="blue">Helpful Tips</Text>*/}
+                        {/*    <List size="sm">*/}
+                        {/*        <List.Item>The information contained in the survey above will be provided to each request submitted below</List.Item>*/}
+                        {/*        <List.Item>Editing the submission above will also update each of the linked requests below as changes are made</List.Item>*/}
+                        {/*        <List.Item>Please ensure your Unified Intake details are correct prior to submitting a new request</List.Item>*/}
+                        {/*    </List>*/}
+                        {/*</Blockquote>*/}
+                        <Alert title="Helpful Tips" radius="lg" color="blue" icon={<IconInfoCircle size={24} />}>
+                            <List size="sm">
+                                <List.Item>The information contained in the survey above will be provided to each request submitted below</List.Item>
+                                <List.Item>Editing the submission above will also update each of the linked requests below as changes are made</List.Item>
+                                <List.Item>Please ensure your Unified Intake details are correct prior to submitting a new request</List.Item>
+                            </List>
                         </Alert>
                     </Box>
                 )}
+                <Text fw={700} mb="md">SHC Services</Text>
                 <Grid gutter="md">
                     {/* Tabs - Services */}
                     <Grid.Col
@@ -235,10 +245,8 @@ export function IntakeDetail() {
                     </Tooltip>
                     <Button
                         color="green"
-                        rightSection={<IconExternalLink size={16} />}
+                        rightSection={<IconPencil size={16} />}
                         component="a"
-                        target="_blank"
-                        rel="noopener noreferrer"
                         href={mutableUrl}
                         variant="light"
                         size="xs"
@@ -311,10 +319,10 @@ export function IntakeDetail() {
                 }}
             >
                 {/* Header with button */}
-                <Group mb="xs">
+                <Group mb="md">
                     <Breadcrumbs>
-                        <Anchor onClick={() => navigate("/")}>Home</Anchor>
-                        <Anchor onClick={() => navigate(`/detail/${params.id}`)} >Detail</Anchor>
+                        <Anchor onClick={() => navigate("/")}><strong>← Home</strong></Anchor>
+                        {/*<Anchor onClick={() => navigate(`/detail/${params.id}`)} >Detail</Anchor>*/}
                     </Breadcrumbs>
                 </Group>
                 <Group position="apart" align="center" noWrap style={{ width: '100%' }}>
