@@ -64,7 +64,7 @@ class Child {
             "records" => $universalId
         ];
 
-        if (!defined('PROJECT_ID')){ //If we are navigating from deactivation (still have to update child records) - getData will be outside of project context
+        if (!defined('PROJECT_ID') || PROJECT_ID !== $this->getParentProjectId()){ //If we are navigating from deactivation (still have to update child records) - getData will be outside of project context
             define("PROJECT_ID", $this->getParentProjectId()); //Force project context to enable getFieldNames
             global $Proj;
             $Proj = new \Project($this->getParentProjectId());
