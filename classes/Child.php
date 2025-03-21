@@ -38,7 +38,7 @@ class Child {
 
         if (!empty($res['errors'])) {
             // Child form names have to match parent form names - they will otherwise fail to copy over due to the "_complete" variables being based on the survey name
-            $errorString = $res['errors'];
+            $errorString = is_array($res['errors']) ? json_encode($res['errors']) : $res['errors'];
             $this->getModule()->emError(
                 "Failed to save data from parent to child. Parent Record ID: $universalId, Child PID: $childId. Reason: $errorString"
             );
