@@ -14,7 +14,8 @@ import {
     List,
     Loader,
     Tooltip,
-    rem, Alert
+    Space,
+    Alert
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
@@ -205,14 +206,6 @@ export function Dashboard() {
             >
                 <Title order={3}>Research Intake Dashboard</Title>
                 <Text mb="md" c="dimmed">Welcome, {globalUsername}!</Text>
-                {/*<Blockquote color="blue" iconSize={36} mt="lg" radius="md" icon={<IconInfoCircle/>}>*/}
-                {/*    <Text mb="sm" fw={700} c="blue">Helpful Tips</Text>*/}
-                {/*    <List size="sm">*/}
-                {/*        <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>*/}
-                {/*        <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>*/}
-                {/*        <List.Item>Missing a submission? Please contact your PI</List.Item>*/}
-                {/*    </List>*/}
-                {/*</Blockquote>*/}
                 <Alert title="Helpful Tips" radius="lg" color="blue" icon={<IconInfoCircle size={24} />}>
                     <List size="sm">
                         <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
@@ -225,7 +218,10 @@ export function Dashboard() {
                 <Card id="active-card" withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text fw={500}>Active Research Projects</Text>
+                            <Group gap="sm">  {/* Group ensures adjacent alignment */}
+                                <Text fw={500}>Active Research Projects</Text>
+                                {loading && <Loader size={24} />}
+                            </Group>
                             <Group justify="flex-end">
                                 <Button
                                     rightSection={<IconPlus size={20} />}
@@ -233,7 +229,6 @@ export function Dashboard() {
                                     href={newRequestLink}
                                 >New Request</Button>
                             </Group>
-                            {loading && <Loader size={32} />}
                         </div>
                     </Card.Section>
                     <Card.Section className="table-section">
@@ -253,18 +248,27 @@ export function Dashboard() {
                             </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
-                            {tableData.body.map((row, rowIndex) => (
-                                <Table.Tr key={rowIndex}>
-                                    {row.map((cell, cellIndex) => (
-                                        <Table.Td key={cellIndex}>{cell}</Table.Td>
-                                    ))}
-                                </Table.Tr>
-                            ))}
+                                {tableData.body.length > 0 ? (
+                                    tableData.body.map((row, rowIndex) => (
+                                        <Table.Tr key={rowIndex}>
+                                            {row.map((cell, cellIndex) => (
+                                                <Table.Td key={cellIndex}>{cell}</Table.Td>
+                                            ))}
+                                        </Table.Tr>
+                                    ))
+                                ) : (
+                                    <Table.Tr>
+                                        <Table.Td colSpan={tableData.head.length} style={{ textAlign: 'center', padding: '20px' }}>
+                                            No active research projects.
+                                        </Table.Td>
+                                    </Table.Tr>
+                                )}
                             </Table.Tbody>
                         </Table>
 
                     </Card.Section>
                 </Card>
+
                 <Group justify="flex-end">
                     <Pagination
                         m="lg"
@@ -273,23 +277,52 @@ export function Dashboard() {
                         onChange={setActivePage}
                     />
                 </Group>
+                {!tableData.body.length && <Space h="xl" />}
                 <Card withBorder shadow="sm" radius="md" id="inactive-table">
                     <Card.Section withBorder inheritPadding py="xs">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text fw={500}>Inactive Research Projects</Text>
-                            <Tooltip label="List of deactivated intake projects - these entries have no dashboard functionality">
-                                <ActionIcon variant="subtle">
-                                    <IconQuestionMark stroke={1.5}/>
-                                </ActionIcon>
-                            </Tooltip>
-                            {loading && <Loader size={32} />}
+                            <Group gap="sm">  {/* Group ensures adjacent alignment */}
+                                <Text fw={500}>Inactive Research Projects</Text>
+                                {loading && <Loader size={24} />}
+                                <Tooltip label="List of deactivated intake projects - these entries have no dashboard functionality">
+                                    <ActionIcon variant="light">
+                                        <IconQuestionMark stroke={1.5}/>
+                                    </ActionIcon>
+                                </Tooltip>
+                            </Group>
                         </div>
                     </Card.Section>
                     <Card.Section>
-                        <Table
-                            className="main-table"
-                            data={finishedTable}
-                        />
+                        {/*<Table*/}
+                        {/*    className="main-table"*/}
+                        {/*    data={finishedTable}*/}
+                        {/*/>*/}
+                        <Table className="main-table">
+                            <Table.Thead>
+                                <Table.Tr>
+                                    {finishedTable.head.map((col) => (
+                                        <Table.Th key={col}>{col}</Table.Th>
+                                    ))}
+                                </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                                {finishedTable.body.length > 0 ? (
+                                    finishedTable.body.map((row, rowIndex) => (
+                                        <Table.Tr key={rowIndex}>
+                                            {row.map((cell, cellIndex) => (
+                                                <Table.Td key={cellIndex}>{cell}</Table.Td>
+                                            ))}
+                                        </Table.Tr>
+                                    ))
+                                ) : (
+                                    <Table.Tr>
+                                        <Table.Td colSpan={finishedTable.head.length} style={{ textAlign: 'center', padding: '20px' }}>
+                                            No inactive research projects.
+                                        </Table.Td>
+                                    </Table.Tr>
+                                )}
+                            </Table.Tbody>
+                        </Table>
 
                     </Card.Section>
                 </Card>

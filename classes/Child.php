@@ -535,7 +535,7 @@ class Child {
 
         $mutableFormName = $cSettings['child-universal-survey-form-mutable'] ?? $pSettings['universal-survey-form-mutable'];
         $eventId = $this->getEventId($this->getChildProjectId(), $mutableFormName);
-        $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childId, $fieldName, 1");
+        $this->getModule()->emLog("Updating redcap_edocs_data_mapping with values: $docId, $childId, $eventId, $childRecordId, $fieldName, 1");
         $query = "INSERT INTO redcap_edocs_data_mapping (doc_id, project_id, event_id, record, field_name, instance)
           VALUES ('" . db_escape($docId) . "', '" . db_escape($childId) . "', '" . db_escape($eventId) . "',
                   '" . db_escape((int) $childRecordId) . "', '" . db_escape($fieldName) . "', 1)";
@@ -555,7 +555,7 @@ class Child {
 
         $eventId = $this->getEventId($this->getChildProjectId(), $mutableFormName);
         $dataTable = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($childId) : "redcap_data";
-        $this->getModule()->emLog("Updating $dataTable with values: $childId, $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
+        $this->getModule()->emLog("Updating $dataTable with values: $childId, $eventId, $childRecordId, $fieldName, $docId, NULL");
         $q = db_query("INSERT INTO `" . $dataTable . "` (project_id, event_id, record, field_name, value, instance)
                VALUES ('" . db_escape($childId) . "', '" . db_escape($eventId) . "', '" . db_escape((int)$childRecordId) . "', 
                        '" . db_escape($fieldName) . "', '" . db_escape($docId) . "', NULL)");
