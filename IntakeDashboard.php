@@ -14,6 +14,7 @@ use Files;
 use REDCap;
 use Project;
 use Survey;
+use System;
 
 
 class IntakeDashboard extends \ExternalModules\AbstractExternalModule
@@ -22,6 +23,7 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
     const BUILD_FILE_DIR = 'dashboard-ui/dist/assets';
 //    private $moduleCore;
+
 
     public function __construct()
     {
@@ -39,6 +41,11 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
     {
         if(empty($_SESSION['username']))
             return null;
+
+        //Substitute API endpoint link in display
+        $page = $this->getUrl("pages/root.php", false, true);
+        $link['url'] = $page;
+
         return $link;
     }
 
@@ -51,6 +58,10 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
      */
     public function injectJSMO($data = null, $init_method = null): void
     {
+        // Required for redirect from intake-dashboard.php to work : csrf token does not get set otherwise
+        $csrfToken = System::getCsrfToken();
+        if(!$csrfToken) $csrfToken = System::generateCsrfToken();
+
         echo $this->initializeJavascriptModuleObject();
 
         // Output the script tag for loading the JSMO JavaScript file
