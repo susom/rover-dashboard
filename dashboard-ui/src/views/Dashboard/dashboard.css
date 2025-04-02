@@ -42,10 +42,11 @@
 }
 
 #inactive-table .mantine-Card-section {
-    color: red;
+    color: rgb(120,0,0);
 }
 
 /* Highlight active column */
 .active-column {
-    color: #007bff;
+    color: rgb(120,0,0);
 }
+
