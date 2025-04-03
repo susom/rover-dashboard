@@ -28,13 +28,14 @@ export function TableMenu({rowData, toggleSuccess, toggleError}){
         return (
             <>
                 <Menu.Item
-                    color={isDeactivated ? "green" : "red"}
-                    leftSection={isDeactivated ? <IconToggleLeftFilled /> : <IconToggleRightFilled />}
+                    color={isDeactivated ? "green" : "rgb(120,0,0)"}
+                    leftSection={isDeactivated ? <IconToggleLeftFilled /> : <IconToggleRightFilled size="24" />}
                     onClick={open}
                 >
                     {isDeactivated ? "Activate" : "Deactivate"}
                 </Menu.Item>
-                <Menu.Label>{isDeactivated ? inactiveLabel : activeLabel}</Menu.Label>
+                <Menu.Label style={{color:'black'}}>{isDeactivated ? inactiveLabel : activeLabel}</Menu.Label>
+                <Menu.Label style={{color:'red'}}>Cannot be reactivated without Stanford Admin assistance</Menu.Label>
             </>
         );
     }

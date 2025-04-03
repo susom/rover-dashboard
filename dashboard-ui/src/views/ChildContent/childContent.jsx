@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
 import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
-import {IconBook, IconPencil, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconMessage2Exclamation} from "@tabler/icons-react";
+import {IconEye, IconPencil, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconMessage2Exclamation} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -59,13 +59,14 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             return (
                 <Button
                     size="xs"
-                    color="green"
-                    variant="light"
+                    color="rgb(120,0,0)"
+                    variant="outline"
                     component="a"
                     target="_blank"
                     rel="noopener noreferrer"
+                    w={80}
                     href={data.survey_url}
-                    rightSection={<IconPencil size={20} />}
+                    rightSection={<IconPencil size={16} />}
                 >
                     Edit
                 </Button>
@@ -75,10 +76,10 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             return (
                 <Button
                     size="xs"
-                    color="blue"
-                    variant="light"
+                    w={80}
+                    className="stanford-button"
                     childIndex = {findChild}
-                    rightSection={<IconBook size={16} />}
+                    rightSection={<IconEye size={16} />}
                     onClick={() => {
                         setChildSelected(findChild)
                         childOpen()
@@ -203,6 +204,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 return (
                     <Group justify="flex-end">
                         <Button
+                            className="stanford-button"
                             onClick={open}
                             rightSection={<IconPlus size={20} />}
                             component="a"
