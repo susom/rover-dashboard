@@ -377,6 +377,19 @@ export function IntakeDetail() {
                             </Alert>
                         </Box>
                     )}
+                    {
+                        detailMutable?.complete !== "2" && (
+                            <Box mb="sm" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
+                                <Alert className="stanford-alert" variant="transparent" title="Helpful Tips" radius="lg" icon={<IconInfoCircle size={24} />}>
+                                    <List size="sm">
+                                        <List.Item>Your research project is currently deactivated and request functionality has been disabled</List.Item>
+                                        <List.Item>Please contact a Stanford Administrator to reactivate</List.Item>
+                                    </List>
+                                </Alert>
+                            </Box>
+                        )
+                    }
+
                 </Card>
                 {bottomBox()}
             </AppShell.Main>

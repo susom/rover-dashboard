@@ -234,7 +234,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 </div>
             </Modal>
             <div>
-                <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md" }} overlayProps={{ blur: 2 }} />
+                <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md", color:"rgb(120,0,0)" }} overlayProps={{ blur: 2 }} />
                 {renderRequestButton()}
                 <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
                     {childOpened && renderChildViewModal()}
