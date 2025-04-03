@@ -601,6 +601,8 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                         $intake['research_title'] = $detail['research_title'] ?? null;
                         $intake['intake_active'] = $detail['intake_active'] ?? null;
                         $intake['active_change_date'] = $detail['active_change_date'] ?? null;
+                        $intake['deactivation_reason'] = $detail['deactivation_reason'] ?? null;
+                        $intake['deactivation_user'] = $detail['deactivation_user'] ?? null;
 
                         $matchFound = true;
                         break;
