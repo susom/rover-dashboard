@@ -107,6 +107,11 @@ export function Dashboard() {
         )
     }
 
+    const truncate = (str, n) => {
+        if (!str) return "Not Provided";
+        return str.length > n ? str.substring(0, n) + "..." : str;
+    };
+
     // Only enable sorting for these columns
     const sortableColumns = ["ID", "Submission Date", "PI Name"]
 
@@ -173,7 +178,7 @@ export function Dashboard() {
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
-            item?.research_title ? item.research_title : "Not Provided",
+            truncate(item?.research_title, 65), // Adjust the number of characters as needed
             item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id),
             renderMenu(item),
@@ -185,7 +190,7 @@ export function Dashboard() {
         body: pagesInactive[inactivePage - 1]?.map(item => [
             item?.intake_id,
             item?.active_change_date,
-            item?.research_title ? item.research_title : "Not Provided",
+            truncate(item?.research_title, 65), // Adjust the number of characters as needed
             item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id)
         ]) || [],
