@@ -1,7 +1,17 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
 import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
-import {IconEye, IconPencil, IconInfoCircle, IconPlus, IconLockOpen2, IconLock, IconMessage2Exclamation} from "@tabler/icons-react";
+import {
+    IconEye,
+    IconPencil,
+    IconInfoCircle,
+    IconPlus,
+    IconLockOpen2,
+    IconLock,
+    IconMessage2Exclamation,
+    IconRotateClockwise,
+    IconCheck
+} from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
 
@@ -125,16 +135,18 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
      * @returns {string}
      */
     const createLabelForStatus = (num) => {
+        const def = <Tooltip color="black" multiline w={250} position="top" withArrow label="Your request has been received by the service team and is awaiting processing. Updates to the Universal Intake Survey above will continue to apply to this request"><Badge color="rgb(88,86,83)" variant="light" size="md">Received</Badge></Tooltip>
+
         return ({
-            "0": "Incomplete",
-            "1": "Processing",
-            "2": "Processing - Updates Locked",
-            "3": "Complete",
-            "4": "Unable to Process",
-            "5": "Processing - Awaiting additional updates",
-            "77": "Received",
-            "99": "Canceled"
-        }[num] || "Received");
+            "0": <Tooltip color="black" multiline w={250} position="top" withArrow label="This survey has not been completed, the service team has not recieved your request"><Badge color="red" variant="light" size="md">Incomplete</Badge></Tooltip>,
+            "1": <Tooltip color="black" multiline w={250} position="top" withArrow label="The service team is processing your request and has enabled updates. Any changes to the Universal Intake Survey above will propogate"><Badge color="rgba(194, 155, 0)" variant="light" size="md" rightSection={<IconRotateClockwise size={16} />}>Processing</Badge></Tooltip>, // processing
+            "2": <Tooltip color="black" multiline w={250} position="top" withArrow label="Your request is being processed by the service team and is now locked. Changes made to the Universal Intake Survey above will not be applied to this request"><Badge color="rgba(194, 155, 0)" variant="light" size="md">Processing ...</Badge></Tooltip>, // processing updates locked
+            "3": <Tooltip color="black" multiline w={250} position="top" withArrow label="Service team has completed this request"><Badge color="green" variant="light" size="md" rightSection={<IconCheck size={16} />}>Completed</Badge></Tooltip>,
+            "4": <Badge color="red" variant="light" size="md">Unable to process</Badge>,
+            "5": <Tooltip color="black" multiline w={250} position="top" withArrow label="The service team is processing your request and has requested additional updates, please ensure your universal intake survey above is filled out in its entirety"><Badge color="rgba(194, 155, 0)" variant="light" size="md">Processing ...</Badge></Tooltip>, // processing awaiting additional updates
+            "77": def,
+            "99": <Badge color="red" variant="light" size="md">Canceled</Badge>
+        }[num] || def);
     };
 
     const renderChildViewModal = () => {
@@ -219,7 +231,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     return (
         <div>
             <Modal title={`New Request - ${childInfo?.title}`} size="xl" opened={opened} onClose={close} centered>
-                <Alert variant="light" color="blue" title="Notice" icon={<IconInfoCircle/>}>
+                <Alert color="rgb(120,0,0)" variant="outline" title="Notice" icon={<IconInfoCircle/>}>
                     Are you sure you want to create a new request?
                     <List size="sm">
                         <List.Item>Continuing with this process will create a new ticket in the corresponding team's queue</List.Item>
@@ -229,6 +241,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 </Alert>
                 <div style={{display: 'flex', justifyContent: 'center', marginTop: '1rem'}}>
                     <Button
+                        className="stanford-button"
                         onClick={onClick}
                     >Confirm</Button>
                 </div>
@@ -240,7 +253,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
-                    columns={['Request Number', 'Status', 'Submission Timestamp', 'Submitted By','Survey Link']}
+                    columns={['REQUEST NUMBER', 'STATUS', 'SUBMISSION TIMESTAMP', 'SUBMITTED BY','SURVEY LINK']}
                     body={body}
                 />
             </div>
