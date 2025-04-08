@@ -26,6 +26,7 @@ import { AppHeader } from "../../components/AppHeader/appHeader";
 import { IconBook, IconExternalLink, IconCheck, IconX, IconInfoCircle, IconPencil, IconEye } from '@tabler/icons-react';
 import {useNavigate, useParams} from "react-router-dom";
 import {ChildContent} from "../ChildContent/childContent.jsx";
+import IntakeAlert from "../../components/Alerts/intakeAlert.jsx";
 
 export function IntakeDetail() {
     const [overallStep, setOverallStep] = useState(1);
@@ -258,7 +259,7 @@ export function IntakeDetail() {
                 <Grid gutter="md">
                     <Grid.Col span={8}>
                         <Card withBorder shadow="sm" radius="md" my="sm" h="100%" >
-                            <Text size="xl" fw={700}>Unified Intake Nickname</Text>
+                            <Text size="xl" fw={700}>{detailMutable?.research_nickname}</Text>
                             <Text mb="md">{detailMutable?.research_title}</Text>
                             <Timeline active={1} lineWidth={3} bulletSize={20} mb="lg">
                                 <Timeline.Item
@@ -364,33 +365,26 @@ export function IntakeDetail() {
                     {modalOpen && renderTable()}
                 </Modal>
                 {topBox()}
-                {/*<Divider label="SHC Services" labelPosition="center" mb="sm" />*/}
-                <Card my="lg" withBorder shadow="sm" radius="md">
-                    {detailMutable?.complete === "2" && (
-                        <Box mb="sm" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
-                            <Alert className="stanford-alert" variant="transparent" title="Helpful Tips" radius="lg" icon={<IconInfoCircle size={24} />}>
-                                <List size="sm">
-                                    <List.Item>The information contained in the survey above will be provided to each request submitted below</List.Item>
-                                    <List.Item>Editing the submission above will also update each of the linked requests below as changes are made</List.Item>
-                                    <List.Item>Please ensure your Unified Intake details are correct prior to submitting a new request</List.Item>
-                                </List>
-                            </Alert>
+
+                {detailMutable?.complete === "2" && (
+                        <Box mt="lg" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
+                            <IntakeAlert />
                         </Box>
-                    )}
-                    {
-                        detailMutable?.complete !== "2" && (
+                )}
+                {
+                    detailMutable?.complete !== "2" && (
+                        <Card my="lg" withBorder shadow="sm" radius="md">
                             <Box mb="sm" style={{ flex: 1, minWidth: '200px', flexGrow: 2 }}>
-                                <Alert className="stanford-alert" variant="transparent" title="Helpful Tips" radius="lg" icon={<IconInfoCircle size={24} />}>
+                                <Alert className="stanford-alert" variant="transparent" title="Notice" radius="lg" icon={<IconInfoCircle size={24} />}>
                                     <List size="sm">
                                         <List.Item>Your research project is currently deactivated and request functionality has been disabled</List.Item>
                                         <List.Item>Please contact a Stanford Administrator to reactivate</List.Item>
                                     </List>
                                 </Alert>
                             </Box>
-                        )
-                    }
-
-                </Card>
+                        </Card>
+                    )
+                }
                 {bottomBox()}
             </AppShell.Main>
         </AppShell>

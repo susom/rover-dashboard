@@ -8,10 +8,19 @@
   padding: 0 !important;
 }
 
+.stanford-alert.mantine-Alert-root svg {
+  color: rgb(140,0,0) !important;
+}
+
 .pagination-active-bg {
   background-color: rgb(140,0,0) !important;
 }
 
 .mantine-Pagination-root {
   --pagination-active-bg: rgb(140,0,0) !important;
+}
+
+.mantine-Container-root {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
