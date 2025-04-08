@@ -41,11 +41,10 @@
     min-width: 50px;
 }
 
-#inactive-table .mantine-Card-section {
-    color: red;
-}
+
 
 /* Highlight active column */
 .active-column {
-    color: #007bff;
+    color: rgb(120,0,0);
 }
+

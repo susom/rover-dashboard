@@ -8,22 +8,20 @@ import {
     ActionIcon,
     Table,
     Text,
-    Divider,
     Title,
     Blockquote,
-    List,
     Loader,
     Tooltip,
-    Space,
-    Alert
+    Space
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
 import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
-import { IconPlus, IconInfoCircle, IconArrowRight, IconQuestionMark, IconLogin2} from '@tabler/icons-react';
+import { IconPlus, IconInfoCircle, IconEye, IconQuestionMark, IconLogin2} from '@tabler/icons-react';
 import {TableMenu} from "../../components/TableMenu/TableMenu.jsx";
 
 import './dashboard.css';
+import DashboardAlert from "../../components/Alerts/dashboardAlert.jsx";
 
 export function Dashboard() {
     const [intakes, setIntakes] = useState([])
@@ -33,7 +31,7 @@ export function Dashboard() {
     const navigate = useNavigate()
     const [activePage, setActivePage] = useState(1);
     const [inactivePage, setInactivePage] = useState(1);
-
+    const [alertOpen, setAlertOpen] = useState(true)
     // Sorting
     const [sortColumn, setSortColumn] = useState("ID");
     const [sortDirection, setSortDirection] = useState("desc"); // 'asc' or 'desc'
@@ -50,9 +48,7 @@ export function Dashboard() {
         jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
     };
 
-    const transition = (id) => {
-        navigate(`/detail/${id}`)
-    }
+    const transition = (id) => { navigate(`/detail/${id}`) }
 
     const intakeSuccessCallback = (res) => {
         console.log('success', res)
@@ -87,11 +83,11 @@ export function Dashboard() {
             <Button
                 id={id}
                 onClick={() => transition(id)} // Only created once per id
-                variant="light"
+                className="stanford-button"
                 size="xs"
-                rightSection={<IconLogin2 />}
+                rightSection={<IconEye size="16" />}
             >
-                Open
+                View
             </Button>
         ),
         [] // Dependencies are empty so this function will only be created once
@@ -106,6 +102,11 @@ export function Dashboard() {
             />
         )
     }
+
+    const truncate = (str, n) => {
+        if (!str) return "Not Provided";
+        return str.length > n ? str.substring(0, n) + "..." : str;
+    };
 
     // Only enable sorting for these columns
     const sortableColumns = ["ID", "Submission Date", "PI Name"]
@@ -173,7 +174,7 @@ export function Dashboard() {
         body: pagesActive[activePage - 1]?.map(item => [
             item?.intake_id,
             item?.completion_timestamp,
-            item?.research_title ? item.research_title : "Not Provided",
+            truncate(item?.research_title, 65), // Adjust the number of characters as needed
             item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id),
             renderMenu(item),
@@ -185,7 +186,7 @@ export function Dashboard() {
         body: pagesInactive[inactivePage - 1]?.map(item => [
             item?.intake_id,
             item?.active_change_date,
-            item?.research_title ? item.research_title : "Not Provided",
+            truncate(item?.research_title, 65), // Adjust the number of characters as needed
             item?.pi_name ? item.pi_name : "Not Provided",
             renderNavButton(item.intake_id)
         ]) || [],
@@ -205,15 +206,8 @@ export function Dashboard() {
                 h="calc(100vh - 55px)" //Prevent UI from scrolling under
             >
                 <Title order={3}>Research Intake Dashboard</Title>
-                <Text mb="md" c="dimmed">Welcome, {globalUsername}!</Text>
-                <Alert title="Helpful Tips" radius="lg" color="blue" icon={<IconInfoCircle size={24} />}>
-                    <List size="sm">
-                        <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
-                        <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>
-                        <List.Item>Missing a submission? Please contact your PI</List.Item>
-                    </List>
-                </Alert>
-                <Divider my="md" />
+                <Text mb="md" c="dimmed">Welcome!</Text>
+                <DashboardAlert/>
                 {error && <Blockquote mb="md" color="red"><strong>Error: </strong>{error}</Blockquote>}
                 <Card id="active-card" withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
@@ -224,10 +218,11 @@ export function Dashboard() {
                             </Group>
                             <Group justify="flex-end">
                                 <Button
+                                    className="stanford-button"
                                     rightSection={<IconPlus size={20} />}
                                     component="a"
                                     href={newRequestLink}
-                                >New Request</Button>
+                                >New Project</Button>
                             </Group>
                         </div>
                     </Card.Section>
@@ -285,7 +280,7 @@ export function Dashboard() {
                                 <Text fw={500}>Inactive Research Projects</Text>
                                 {loading && <Loader size={24} />}
                                 <Tooltip label="List of deactivated intake projects - these entries have no dashboard functionality">
-                                    <ActionIcon variant="light">
+                                    <ActionIcon radius="xl" size="sm" color="rgb(120,0,0)" variant="outline">
                                         <IconQuestionMark stroke={1.5}/>
                                     </ActionIcon>
                                 </Tooltip>
@@ -293,10 +288,6 @@ export function Dashboard() {
                         </div>
                     </Card.Section>
                     <Card.Section>
-                        {/*<Table*/}
-                        {/*    className="main-table"*/}
-                        {/*    data={finishedTable}*/}
-                        {/*/>*/}
                         <Table className="main-table">
                             <Table.Thead>
                                 <Table.Tr>

@@ -1,27 +1,44 @@
 import React, {useState} from "react";
 
-import {Button, Card, Grid, Group, Text, Stepper} from '@mantine/core';
+import {Box, Group, Button, List, Text, Image} from '@mantine/core';
 import {Link} from "react-router-dom";
+import "./error.css";
 
 export function Error() {
     return (
-        <div style={{width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', padding: '30px'}}>
-            <Grid style={{height: '100%'}}>
-                <Grid.Col span={12} style={{padding: 0}}>
-                    <Card shadow="sm" p="lg" style={{height: '100%'}}>
-                        <h1>Oops! Something Went Wrong</h1>
-                        <p>
-                            We're sorry, but it looks like you've encountered an unexpected error.
-                        </p>
-                        <p>
-                            Please click the button below to return to the homepage.
-                        </p>
-                        <Link to="/">
+        <Box style={{ width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "30px" }}>
+                {/* 404 Image (Left Side) */}
+                <Box>
+                    <Image
+                        src="https://storage.googleapis.com/redcap_public_images/404.png"
+                        h={400}
+                        fit="contain"
+                        alt="404 error"
+                    />
+                </Box>
+
+                {/* Error Message (Right Side) */}
+                <Box>
+                    <Text size="xl" fw={700} mb="sm">
+                        Oops! Something Went Wrong
+                    </Text>
+                    <Text mb="md">
+                        We're sorry, but it looks like you've encountered an unexpected error.
+                    </Text>
+                    <Text mb="md" fw={700}>Possible Reasons:</Text>
+                    <List mb="md">
+                        <List.Item>Your session has recently expired and you might need to refresh the page</List.Item>
+                        <List.Item>You've navigated to a page that does not exist</List.Item>
+                    </List>
+                    <Text mb="md">
+                        Please click the button below to return to the homepage.
+                    </Text>
+                    <Group>
+                        <Button component={Link} to="/" color="blue">
                             Back to Safety
-                        </Link>
-                    </Card>
-                </Grid.Col>
-            </Grid>
-        </div>
+                        </Button>
+                    </Group>
+                </Box>
+        </Box>
     );
 }
