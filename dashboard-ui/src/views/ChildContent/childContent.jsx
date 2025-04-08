@@ -179,8 +179,6 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     )
 
     const renderRequestButton = () => {
-        let label
-
         if(immutableParentInfo?.intake_active === "0") { //If deactivated
             return (
                 <Group justify="flex-end">
