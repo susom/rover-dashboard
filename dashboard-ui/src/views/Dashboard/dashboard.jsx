@@ -8,14 +8,11 @@ import {
     ActionIcon,
     Table,
     Text,
-    Divider,
     Title,
     Blockquote,
-    List,
     Loader,
     Tooltip,
-    Space,
-    Alert
+    Space
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {useNavigate} from "react-router-dom";
@@ -24,6 +21,7 @@ import { IconPlus, IconInfoCircle, IconEye, IconQuestionMark, IconLogin2} from '
 import {TableMenu} from "../../components/TableMenu/TableMenu.jsx";
 
 import './dashboard.css';
+import DashboardAlert from "../../components/Alerts/dashboardAlert.jsx";
 
 export function Dashboard() {
     const [intakes, setIntakes] = useState([])
@@ -33,7 +31,7 @@ export function Dashboard() {
     const navigate = useNavigate()
     const [activePage, setActivePage] = useState(1);
     const [inactivePage, setInactivePage] = useState(1);
-
+    const [alertOpen, setAlertOpen] = useState(true)
     // Sorting
     const [sortColumn, setSortColumn] = useState("ID");
     const [sortDirection, setSortDirection] = useState("desc"); // 'asc' or 'desc'
@@ -50,9 +48,7 @@ export function Dashboard() {
         jsmoModule.fetchIntakeParticipation(intakeSuccessCallback, intakeErrorCallback);
     };
 
-    const transition = (id) => {
-        navigate(`/detail/${id}`)
-    }
+    const transition = (id) => { navigate(`/detail/${id}`) }
 
     const intakeSuccessCallback = (res) => {
         console.log('success', res)
@@ -211,16 +207,7 @@ export function Dashboard() {
             >
                 <Title order={3}>Research Intake Dashboard</Title>
                 <Text mb="md" c="dimmed">Welcome!</Text>
-                <Card withBorder shadow="sm" radius="md">
-                    <Alert title="Helpful Tips" variant="transparent" radius="lg" className="stanford-alert" icon={<IconInfoCircle size={24} />}>
-                        <List size="sm">
-                            <List.Item>These tables represent active and completed research intakes affiliated with your username</List.Item>
-                            <List.Item>You will see an entry in either table for any submissions that list your username as a contact</List.Item>
-                            <List.Item>Missing a submission? Please contact your PI</List.Item>
-                        </List>
-                    </Alert>
-                </Card>
-                <Divider my="md" />
+                <DashboardAlert/>
                 {error && <Blockquote mb="md" color="red"><strong>Error: </strong>{error}</Blockquote>}
                 <Card id="active-card" withBorder shadow="sm" radius="md">
                     <Card.Section withBorder inheritPadding py="xs">
@@ -235,7 +222,7 @@ export function Dashboard() {
                                     rightSection={<IconPlus size={20} />}
                                     component="a"
                                     href={newRequestLink}
-                                >New Request</Button>
+                                >New Project</Button>
                             </Group>
                         </div>
                     </Card.Section>
