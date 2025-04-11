@@ -192,6 +192,26 @@
                 "field": "is_child_project",
                 "value": "1"
             }
+        },
+        {
+            "key": "status-date",
+            "name": "<strong>Status Date Field</strong><br><i>The date field housing the last updated timestamp of a status change reflected to researchers using the dashboard</i>",
+            "required": true,
+            "type": "field-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
+        },
+        {
+            "key": "documents-form",
+            "name": "<strong>Documents Form</strong><br><i>Form / Survey housing the output documents to be rendered to participants on the dashboard. This will be displayed as a survey URL for a particular record</i>",
+            "required": true,
+            "type": "form-list",
+            "branchingLogic": {
+                "field": "is_child_project",
+                "value": "1"
+            }
         }
     ],
     "system-settings": [
