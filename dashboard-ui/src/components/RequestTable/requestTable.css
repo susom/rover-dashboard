@@ -1,0 +1,16 @@
+.request-table {
+    table-layout: auto; /* Let content determine column width */
+    width: 100%;
+}
+
+.request-table th,
+.request-table td {
+    white-space: nowrap;       /* Prevent text wrapping */
+    min-width: 150px;          /* Prevent very narrow columns */
+    padding: 8px 12px;         /* Optional: add spacing for readability */
+}
+
+.request-table .mantine-Badge-root {
+    white-space: nowrap;
+    min-width: fit-content;
+}

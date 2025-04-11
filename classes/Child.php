@@ -389,6 +389,63 @@ class Child {
         return REDCap::getSurveyLink($childRecordId, $formName, $eventId, 1, $this->getChildProjectId());
     }
 
+    /**
+     * @param $childRecordId
+     * @return string|null
+     * Render the survey url for document form given a child request
+     */
+    public function getDocumentsLink($childRecordId): ?string
+    {
+        $childProjectId = $this->getChildProjectId();
+        $cSettings = $this->getModule()->getProjectSettings($childProjectId);
+        $docForm = $cSettings['documents-form'] ?? "";
+
+        if(empty($docForm)){
+            $this->getModule()->emError("Documents form is not set in project $childProjectId");
+            return null;
+        }
+
+        if (!defined('PROJECT_ID')){ // Have to explicitly set PROJECT_ID, Proj for getFieldNames
+            define("PROJECT_ID", $this->getChildProjectId()); //Force project context to enable getFieldNames
+            global $Proj;
+            $Proj = new \Project($this->getChildProjectId());
+        }
+
+        // Grab all field names in documents form
+        $fields = REDCap::getFieldNames($docForm);
+
+        $queryParams = [
+            "return_format" => "json",
+            "project_id" => $this->getChildProjectId(),
+            "records" => $childRecordId,
+            "fields" => $fields
+        ];
+
+        $parentData = json_decode(REDCap::getData($queryParams), true);
+        $parentData = reset($parentData);
+
+        // Check if file upload fields have data
+        if(!empty($parentData)){
+            $filteredFiles = array_filter(
+                $parentData,
+                function ($value, $key) {
+                    return preg_match('/^file\d+$/', $key) && !empty($value);
+                },
+                ARRAY_FILTER_USE_BOTH
+            );
+
+            if(!empty($filteredFiles)){ // If there are any file fields with a document uploaded, render link
+                $eventId = $this->getEventId($this->getChildProjectId(), $docForm);
+                return REDCap::getSurveyLink($childRecordId, $docForm, $eventId, 1, $this->getChildProjectId());
+            } else { // Otherwise return null
+                return null;
+            }
+        }
+
+        // File form not completed, return null
+        return null;
+    }
+
     //Returns the main survey form for a given child project - (First survey)
     public function getMainSurveyFormName(){
         $pro = new \Project($this->getChildProjectId());

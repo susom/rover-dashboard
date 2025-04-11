@@ -5,7 +5,7 @@ import { useDisclosure } from '@mantine/hooks';
 // import {useNavigate} from "react-router-dom";
 // import { AppHeader } from '../../components/AppHeader/appHeader'; // Import the reusable header
 // import { IconPlus } from '@tabler/icons-react';
-
+import "./requestTable.css";
 
 export function RequestTable({caption, columns, body}) {
     const tableConfig = {
@@ -15,8 +15,9 @@ export function RequestTable({caption, columns, body}) {
     }
     return (
         <>
-            <Table.ScrollContainer type="native" scrollbars="y" mah={300}>
+            <Table.ScrollContainer type="native" mah={300}>
                 <Table
+                    className="request-table"
                     stickyHeader
                     data={tableConfig}
                     striped

@@ -869,6 +869,9 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
                     $submissions[$in]['survey_url'] = "$surveyLink&dashboard_submission_user=$username";
                 }
 
+                if($submission[$completionVariable] === "2") // Only render documents link if user has completed a survey before
+                    $submissions[$in]['documents_url'] = $child->getDocumentsLink($submission['record_id']);
+
                 // Grab timestamp for dashboard display
                 $submissions[$in]['survey_completion_ts'] = $child->getSurveyTimestamp($submission['record_id']);
 
