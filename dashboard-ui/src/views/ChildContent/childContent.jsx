@@ -1,16 +1,14 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table} from "@mantine/core";
+import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table, ActionIcon} from "@mantine/core";
 import {
     IconEye,
     IconPencil,
     IconInfoCircle,
     IconPlus,
-    IconLockOpen2,
-    IconLock,
-    IconMessage2Exclamation,
     IconRotateClockwise,
-    IconCheck
+    IconCheck,
+    IconPaperclip
 } from "@tabler/icons-react";
 import {useDisclosure} from "@mantine/hooks";
 
@@ -101,32 +99,50 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
     }
 
-    const createLockTooltip = (num) => {
-        if(immutableParentInfo?.intake_active === "0")
-            return;
+    const renderDocumentsUrl = (url) => {
+        if(url) {
+            return (
+                <ActionIcon
+                    size="sm"
+                    variant="transparent"
+                    color="rgb(120,0,0)"
+                    component="a"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={url}
+                >
+                    <IconPaperclip></IconPaperclip>
+                </ActionIcon>
+            )
+        }
+    }
 
-        const incomplete = num === "0"
-        const isLocked = ["2", "3", "4", "99"].includes(num);
-        return (
-            <Tooltip
-                w={250}
-                multiline
-                withArrow
-                arrowSize={6}
-                label={
-                    incomplete
-                        ? "This request has not been completed. Please complete the survey by following the edit button on the right and clicking 'Submit'"
-                        : isLocked
-                            ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
-                            : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
-                }
-            >
-                {incomplete ? <IconMessage2Exclamation color="grey" size={24} />
-                    : isLocked ? <IconLock color="grey" size={24} />
-                        : <IconLockOpen2 color="grey" size={24} />}
-            </Tooltip>
-        );
-    };
+    // const createLockTooltip = (num) => {
+    //     if(immutableParentInfo?.intake_active === "0")
+    //         return;
+    //
+    //     const incomplete = num === "0"
+    //     const isLocked = ["2", "3", "4", "99"].includes(num);
+    //     return (
+    //         <Tooltip
+    //             w={250}
+    //             multiline
+    //             withArrow
+    //             arrowSize={6}
+    //             label={
+    //                 incomplete
+    //                     ? "This request has not been completed. Please complete the survey by following the edit button on the right and clicking 'Submit'"
+    //                     : isLocked
+    //                         ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
+    //                         : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
+    //             }
+    //         >
+    //             {incomplete ? <IconMessage2Exclamation color="grey" size={24} />
+    //                 : isLocked ? <IconLock color="grey" size={24} />
+    //                     : <IconLockOpen2 color="grey" size={24} />}
+    //         </Tooltip>
+    //     );
+    // };
 
 
     /**
@@ -172,11 +188,13 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     let body = submissions.map(e => [
         // createLockTooltip(e?.child_survey_status),
         e.record_id,
-        createLabelForStatus(e?.child_survey_status),
         e?.survey_completion_ts ? e.survey_completion_ts : "N/A",
+        createLabelForStatus(e?.child_survey_status),
+        e?.status_date ? e.status_date : (e?.survey_completion_ts?.length ? e.survey_completion_ts : "N/A"),
         e?.dashboard_submission_user ? e?.dashboard_submission_user : "N/A" ,
-        renderInteraction(e)]
-    )
+        renderInteraction(e),
+        renderDocumentsUrl(e?.documents_url)
+    ])
 
     const renderRequestButton = () => {
         if(immutableParentInfo?.intake_active === "0") { //If deactivated
@@ -251,7 +269,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                     {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
-                    columns={['REQUEST NUMBER', 'STATUS', 'SUBMISSION TIMESTAMP', 'SUBMITTED BY','SURVEY LINK']}
+                    columns={['REQUEST ID', 'SUBMISSION DATE', 'STATUS', 'LAST UPDATED', 'SUBMITTED BY','SURVEY LINK', 'DOCS']}
                     body={body}
                 />
             </div>
