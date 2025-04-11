@@ -16,6 +16,7 @@ The Rover project aims to prototype a survey configuration in REDCap to assess i
    - This timestamp field will reflect `survey completion time` of the universal intake (mutable survey)
    - **Editing this record from the parent project outside of survey view will not update this time to children projects**
 6. Each child project is required to have an additional field set in EM Settings for statuses that get reflected back to the user.
+7. Each child project is required to have an additional field set in EM Settings for status change date that get reflected back to the user.
 
 Current statuses: 
 ```php
