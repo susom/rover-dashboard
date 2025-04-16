@@ -1,10 +1,16 @@
-import React, {useState} from "react";
+import React from "react";
 
 import {Box, Group, Button, List, Text, Image} from '@mantine/core';
-import {Link} from "react-router-dom";
 import "./error.css";
 
 export function Error() {
+
+    const handleClick = () => {
+        const protocol = window.location.protocol; // e.g., "https:"
+        const host = window.location.host;         // e.g., "example.com:3000"
+        window.location.href = `${protocol}//${host}/intake-dashboard.php`;
+    };
+
     return (
         <Box style={{ width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "30px" }}>
                 {/* 404 Image (Left Side) */}
@@ -27,14 +33,14 @@ export function Error() {
                     </Text>
                     <Text mb="md" fw={700}>Possible Reasons:</Text>
                     <List mb="md">
-                        <List.Item>Your session has recently expired and you might need to refresh the page</List.Item>
+                        <List.Item>Your session has recently expired and you might need to refresh</List.Item>
                         <List.Item>You've navigated to a page that does not exist</List.Item>
                     </List>
                     <Text mb="md">
                         Please click the button below to return to the homepage.
                     </Text>
                     <Group>
-                        <Button component={Link} to="/" color="blue">
+                        <Button color="blue" onClick={handleClick}>
                             Back to Safety
                         </Button>
                     </Group>
