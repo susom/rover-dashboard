@@ -14,8 +14,8 @@ export function RequestTable({caption, columns, body}) {
         body: body
     }
     return (
-        <>
-            <Table.ScrollContainer type="native" mah={300}>
+        <div style={{ overflow: 'auto', maxHeight: '300px', minWidth: '300px' }}>
+        <Table.ScrollContainer type="auto" >
                 <Table
                     className="request-table"
                     stickyHeader
@@ -23,6 +23,6 @@ export function RequestTable({caption, columns, body}) {
                     striped
                 />
             </Table.ScrollContainer>
-        </>
+        </div>
     )
 }
