@@ -102,17 +102,24 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     const renderDocumentsUrl = (url) => {
         if(url) {
             return (
-                <ActionIcon
-                    size="sm"
-                    variant="transparent"
-                    color="rgb(120,0,0)"
-                    component="a"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={url}
+                <Tooltip
+                    label="Click here to see documents provided by service team"
+                    withArrow
+                    multiline
+                    w={210}
                 >
-                    <IconPaperclip></IconPaperclip>
-                </ActionIcon>
+                    <ActionIcon
+                        size="sm"
+                        variant="transparent"
+                        color="rgb(120,0,0)"
+                        component="a"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={url}
+                    >
+                        <IconPaperclip></IconPaperclip>
+                    </ActionIcon>
+                </Tooltip>
             )
         }
     }
