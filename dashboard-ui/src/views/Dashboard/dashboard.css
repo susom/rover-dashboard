@@ -24,23 +24,23 @@
 }
 
 .main-table thead th:nth-child(2) {
-    width: 160px;
+    width: 180px;
 }
 
 .main-table thead th:nth-child(3) {
-    width: 500px;
+    /*min-width: 500px;*/
+    width: auto !important;
 }
 
 .main-table thead th:nth-child(4) {
-    width: 250px;
+    width: 200px !important;
 }
 .main-table thead th:nth-child(5) {
-    min-width: 120px;
+    width: 125px !important;
 }
 .main-table thead th:nth-child(6) {
-    min-width: 50px;
+    width: 100px !important;
 }
-
 
 
 /* Highlight active column */

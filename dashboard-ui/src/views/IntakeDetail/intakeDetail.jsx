@@ -147,7 +147,7 @@ export function IntakeDetail() {
             <Container fluid>
                 {/* Right side - Unified Intake Complete Box (larger) */}
 
-                <Text fw={700} mb="md">SHC Services</Text>
+                <Text fw={700} mb="md">SHC Partners</Text>
                 <Grid gutter="md">
                     {/* Tabs - Services */}
                     <Grid.Col
