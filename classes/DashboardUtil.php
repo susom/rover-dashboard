@@ -15,53 +15,233 @@ class DashboardUtil
         $this->setEMSettings($settings);
     }
 
+    public function getCompletionVariables($projectId)
+    {
+        $ret = array();
+        $project = new \Project($projectId);
+        foreach($project->forms as $formName => $form) {
+            $ret[$formName . "_complete"] = 1;
+        }
+        return $ret;
+
+    }
+
     /**
-     * @param $projectId
-     * @param $fields
-     * @return array
-     * Removes hidden fields before sending the contents of getData to client
+     * Prepares and filters REDCap fields for UI rendering.
+     *
+     * @param int $projectId The REDCap project ID.
+     * @param array $fieldData Associative array of field_name => value pairs.
+     * @param array $excluded List of metadata arrays to exclude from rendering.
+     * @param string $forms Optional. If specified, filters $fieldData to only fields of these form names
+     *
+     * @return array The transformed list of fields for rendering.
      */
-    public function prepareFieldsForRender($projectId, $fields, $excluded = [], $form = ""): array
+    public function prepareFieldsForRender($projectId, $fieldData, $excluded = [], $forms = []): array
     {
         $project = new \Project($projectId);
         $new = [];
 
-        //If specific form is provided, only render that form's data
-        if(!empty($form)) {
-            $formFields =  json_decode(REDCap::getDataDictionary($projectId, 'json', true, null, $form), true);
-            $formFieldHash = [];
-            foreach($formFields as $field) {
-                $formFieldHash[$field['field_name']] = 1;
-            }
-            foreach($fields as $variableName => $val){
-                if(!array_key_exists($variableName, $formFieldHash))
-                    unset($fields[$variableName]);
-            }
-        }
+        // If a specific form is provided, filter only the fields from that form.
+        if (!empty($forms)) {
+            foreach ($forms as $formName) {
+                $formFields = json_decode(REDCap::getDataDictionary($projectId, 'json', true, null, $formName), true);
 
-        foreach($fields as $k => $v) {
-            $label = isset($project->metadata[$k]) ? trim($project->metadata[$k]['element_label']) : null;
-            $label = strip_tags($label);
+                foreach($formFields as $field) {
+                    $variableName = $field['field_name'];
 
-            if(!empty($label)){
-                // Hidden fields should not be shown to client
-                if(str_contains($project->metadata[$k]['misc'],'HIDDEN') || in_array($project->metadata[$k], $excluded))
+                    if(isset($fieldData[$variableName])) { // In our full dataset, there is a match for this instrument's field
+                        if (
+                            !str_contains($project->metadata[$variableName]['misc'], 'HIDDEN') &&
+                            !in_array($project->metadata[$variableName], $excluded)
+                        ) {
+                            $value = null;
+
+                            if (!empty($project->metadata[$variableName]['element_enum'])) {
+                                $parsed = $this->parseEnumField($project->metadata[$variableName]['element_enum']);
+                                if (isset($parsed[$fieldData[$variableName]])) {
+                                    $value = $parsed[$fieldData[$variableName]];
+                                }
+                            } elseif($project->metadata[$variableName]['element_type'] === "file") {
+                                $a = $this->getFileMetadata($fieldData[$variableName],$projectId);
+                                $value = $a['doc_name'];
+                            } elseif(!empty($fieldData[$variableName])) {
+                                $value = $fieldData[$variableName];
+                            }
+
+                            //If value exists, set it, otherwise skip over label and form
+                            if(!empty($value))
+                                $new[$variableName]["value"] = $value;
+                            else
+                                continue;
+
+                            if(!empty($project->metadata[$variableName]['element_label']))
+                                $label = trim(strip_tags($project->metadata[$variableName]['element_label']));
+                            else // Otherwise, use element note
+                                $label = $project->metadata[$variableName]['element_note'];
+
+                            $new[$variableName]["label"] = $label;
+
+                            // Main survey name will always be first element, set each other form name to null for pagination on frontend
+                            if($formName === $forms[0])
+                                $new[$variableName]["form"] = "$formName";
+                            else
+                                $new[$variableName]["form"] = "";
+                        }
+                    }
+                }
+            }
+        } else {
+            // Get a list of form completion status variables to exclude
+            $completionVariables = $this->getCompletionVariables($projectId);
+
+            foreach ($fieldData as $k => $v) {
+
+                // Skip form completion status fields
+                if (isset($completionVariables[$k])) {
                     continue;
+                }
 
-                //Change key from variable to label for UI display
-                $new[$k]["value"] = $v;
-                $new[$k]["label"] = $label;
-                if(isset($project->metadata[$k]['element_enum'])) {
-                    //Check if field has enum values, if so, replace (checkbox, etc)
-                    $parsed = $this->parseEnumField($project->metadata[$k]['element_enum']);
-                    if(array_key_exists($v, $parsed))
-                        $new[$k]["value"] = $parsed[$v];
+                // Skip hidden or explicitly excluded fields
+                if (
+                    str_contains($project->metadata[$k]['misc'], 'HIDDEN') ||
+                    in_array($project->metadata[$k], $excluded)
+                ) {
+                    continue;
+                }
 
+                // If a label exists for this particular field k
+                if(!empty($project->metadata[$k]['element_label']))
+                    $label = trim(strip_tags($project->metadata[$k]['element_label']));
+                else // Otherwise, use element note
+                    $label = $project->metadata[$k]['element_note'];
+
+                if (!empty($label)) {
+                    $new[$k]["value"] = $v;
+                    $new[$k]["label"] = $label;
+
+                    // If field has enumerated options (e.g., radio/dropdown), parse and map value
+                    if (!empty($project->metadata[$k]['element_enum'])) {
+                        $parsed = $this->parseEnumField($project->metadata[$k]['element_enum']);
+                        if (isset($parsed[$v])) {
+                            $new[$k]["value"] = $parsed[$v];
+                        }
+                    }
+
+                    if($project->metadata[$k]['element_type'] === "file" && !empty($v)) {
+                        $a = $this->getFileMetadata($v,$projectId);
+                        $new[$k]["value"] = $a['doc_name'];
+                    }
                 }
             }
         }
         return $new;
     }
+
+//    /**
+//     * Prepares and filters REDCap fields for UI rendering.
+//     *
+//     * @param int $projectId The REDCap project ID.
+//     * @param array $fieldData Associative array of field_name => value pairs.
+//     * @param array $excluded List of metadata arrays to exclude from rendering.
+//     * @param string $forms Optional. If specified, filters $fieldData to only fields of these form names
+//     *
+//     * @return array The transformed list of fields for rendering.
+//     */
+//    public function prepareFieldsForRender($projectId, $fieldData, $excluded = [], $forms = []): array
+//    {
+//        $project = new \Project($projectId);
+//        $new = [];
+//
+//        // If a specific form is provided, filter only the fields from that form.
+//        if (!empty($forms)) {
+//            foreach ($forms as $formName) {
+//                $formFields = json_decode(REDCap::getDataDictionary($projectId, 'json', true, null, $formName), true);
+//
+//                foreach($formFields as $field) {
+//                    $variableName = $field['field_name'];
+//
+//                    if(isset($fieldData[$variableName])) { // In our full dataset, there is a match for this instrument's field
+//                        if (
+//                            !str_contains($project->metadata[$variableName]['misc'], 'HIDDEN') &&
+//                            !in_array($project->metadata[$variableName], $excluded)
+//                        ) {
+//                            $value = null;
+//
+//                            if (!empty($project->metadata[$variableName]['element_enum'])) {
+//                                $parsed = $this->parseEnumField($project->metadata[$variableName]['element_enum']);
+//                                if (isset($parsed[$fieldData[$variableName]])) {
+//                                    $value = $parsed[$fieldData[$variableName]];
+//                                }
+//                            } elseif($project->metadata[$variableName]['element_type'] === "file") {
+//                                $a = $this->getFileMetadata($fieldData[$variableName],$projectId);
+//                                $value = $a['doc_name'];
+//                            } elseif(!empty($fieldData[$variableName])) {
+//                                $value = $fieldData[$variableName];
+//                            }
+//
+//                            //If value exists, set it, otherwise skip over label and form
+//                            if(!empty($value))
+//                                $new[$variableName]["value"] = $value;
+//                            else
+//                                continue;
+//
+//                            if(!empty($project->metadata[$variableName]['element_label']))
+//                                $label = trim(strip_tags($project->metadata[$variableName]['element_label']));
+//                            else // Otherwise, use element note
+//                                $label = $project->metadata[$variableName]['element_note'];
+//
+//                            $new[$variableName]["label"] = $label;
+//                            $new[$variableName]["form"] = $formName;
+//                        }
+//                    }
+//                }
+//            }
+//        } else {
+//            // Get a list of form completion status variables to exclude
+//            $completionVariables = $this->getCompletionVariables($projectId);
+//
+//            foreach ($fieldData as $k => $v) {
+//
+//                // Skip form completion status fields
+//                if (isset($completionVariables[$k])) {
+//                    continue;
+//                }
+//
+//                // Skip hidden or explicitly excluded fields
+//                if (
+//                    str_contains($project->metadata[$k]['misc'], 'HIDDEN') ||
+//                    in_array($project->metadata[$k], $excluded)
+//                ) {
+//                    continue;
+//                }
+//
+//                // If a label exists for this particular field k
+//                if(!empty($project->metadata[$k]['element_label']))
+//                    $label = trim(strip_tags($project->metadata[$k]['element_label']));
+//                else // Otherwise, use element note
+//                    $label = $project->metadata[$k]['element_note'];
+//
+//                if (!empty($label)) {
+//                    $new[$k]["value"] = $v;
+//                    $new[$k]["label"] = $label;
+//
+//                    // If field has enumerated options (e.g., radio/dropdown), parse and map value
+//                    if (!empty($project->metadata[$k]['element_enum'])) {
+//                        $parsed = $this->parseEnumField($project->metadata[$k]['element_enum']);
+//                        if (isset($parsed[$v])) {
+//                            $new[$k]["value"] = $parsed[$v];
+//                        }
+//                    }
+//
+//                    if($project->metadata[$k]['element_type'] === "file" && !empty($v)) {
+//                        $a = $this->getFileMetadata($v,$projectId);
+//                        $new[$k]["value"] = $a['doc_name'];
+//                    }
+//                }
+//            }
+//        }
+//        return $new;
+//    }
 
     public function parseEnumField($str): array
     {
