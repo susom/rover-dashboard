@@ -628,13 +628,6 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
         }
     }
 
-    public function checkIntakeActivity($parentId, $uid, $surveyEvent){
-        $completedIntake = $this->fetchParentRecordData($parentId, $uid, $surveyEvent);
-        $completedIntake = reset($completedIntake);
-        if($completedIntake['intake_active'] === "0") //If explicitly set to zero return false, otherwise default to true
-            return false;
-        return true;
-    }
 
     /**
      * @param $payload
@@ -723,13 +716,12 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
             $requiredChildPIDs = $this->getRequiredChildPIDs($projectSettings);
 
             //Parse fields & convert labels for UI render of submitted form
-            $pretty_immutable = $completedIntake[0];
-            $pretty_mutable = $mutableIntake[0];
+
             $excluded = ["requester_lookup", "pi_lookup", "one_lookup", "webauth_user"];
 
             $du = new DashboardUtil($this, $projectSettings);
-            $pretty_immutable = $du->prepareFieldsForRender($parentId, $pretty_immutable, $excluded);
-            $pretty_mutable = $du->prepareFieldsForRender($parentId, $pretty_mutable, $excluded);
+            $pretty_immutable = $du->prepareFieldsForRender($parentId, $completedIntake[0], $excluded, []);
+            $pretty_mutable = $du->prepareFieldsForRender($parentId, $mutableIntake[0], $excluded, []);
 
             $childSurveys = $project->surveys;
             $mutableUrl = [];
@@ -854,7 +846,10 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
             $parent_id = $this->getSystemSetting('parent-project');
             $pSettings = $this->getProjectSettings($parent_id);
+
             $child = new Child($this, $payload['child_pid'], $parent_id, $pSettings);
+            $cSettings = $this->getProjectSettings($payload['child_pid']);
+
             $submissions = $child->allChildRecordsExist($payload['universal_id']);
 
             // Grab first form name for this child
@@ -880,8 +875,11 @@ class IntakeDashboard extends \ExternalModules\AbstractExternalModule
 
                 //Get pretty form to render submitted information
                 $du = new DashboardUtil($this, $pSettings);
-                $pretty = $du->prepareFieldsForRender($payload['child_pid'], $submissions[$in], [], $mainSurvey);
-                $submissions[$in]['completed_form_pretty'] = $pretty;
+                $childImmutableFormName = $cSettings['child-universal-survey-form-immutable'] ? $cSettings['child-universal-survey-form-immutable'] : $pSettings['universal-survey-form-immutable'];
+                $childMutableFormName = $cSettings['child-universal-survey-form-mutable'] ? $cSettings['child-universal-survey-form-mutable'] : $pSettings['universal-survey-form-mutable'];
+
+                $pretty = $du->prepareFieldsForRender($payload['child_pid'], $submissions[$in], [], [$mainSurvey, $childMutableFormName, $childImmutableFormName]);
+                $submissions[$in]['child_completed_form_pretty'] = $pretty;
             }
 
             return json_encode(["data" => $submissions, "success" => true]);
