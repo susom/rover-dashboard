@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {RequestTable} from '../../components/RequestTable/requestTable.jsx';
-import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table, ActionIcon} from "@mantine/core";
+import {LoadingOverlay, Group, Button, Tooltip, Alert, List, Modal, Badge, Table, ActionIcon, Tabs} from "@mantine/core";
 import {
     IconEye,
     IconPencil,
@@ -61,7 +61,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     const renderInteraction = (data) => {
         if(data?.survey_url){
             if(immutableParentInfo?.intake_active === "0") {
-                return <Badge color="red" radius="sm">Canceled</Badge>;
+                return <Badge color="red" radius="sm">Canceled/Deactivated</Badge>;
             }
 
             return (
@@ -81,6 +81,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             )
         } else {
             let findChild = submissions.findIndex(e => e.record_id === data.record_id);
+
             return (
                 <Button
                     size="xs"
@@ -124,34 +125,6 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
         }
     }
 
-    // const createLockTooltip = (num) => {
-    //     if(immutableParentInfo?.intake_active === "0")
-    //         return;
-    //
-    //     const incomplete = num === "0"
-    //     const isLocked = ["2", "3", "4", "99"].includes(num);
-    //     return (
-    //         <Tooltip
-    //             w={250}
-    //             multiline
-    //             withArrow
-    //             arrowSize={6}
-    //             label={
-    //                 incomplete
-    //                     ? "This request has not been completed. Please complete the survey by following the edit button on the right and clicking 'Submit'"
-    //                     : isLocked
-    //                         ? "This intake is either currently being worked upon or in a state not accepting changes. Updates made to the unified intake above will not propagate to this request."
-    //                         : "This intake is currently in a state accepting changes. Updates made to the unified intake above will propagate to this request."
-    //             }
-    //         >
-    //             {incomplete ? <IconMessage2Exclamation color="grey" size={24} />
-    //                 : isLocked ? <IconLock color="grey" size={24} />
-    //                     : <IconLockOpen2 color="grey" size={24} />}
-    //         </Tooltip>
-    //     );
-    // };
-
-
     /**
      *
      * @param num
@@ -173,22 +146,59 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
     };
 
     const renderChildViewModal = () => {
+        let withoutForm = []
+        let withForm = []
+
+        for (const [key, v] of Object.entries(submissions[childSelected]?.child_completed_form_pretty)) {
+            if (v.form !== null && v.form !== "") {
+                withForm.push([v.label, v.value])
+            } else {
+                withoutForm.push([v.label, v.value])
+            }
+        }
+
         const tab = {
-            caption: 'Survey Details',
+            caption: 'Above data has been submitted',
             head: ["Label", "Value"],
-            body: submissions[childSelected]?.completed_form_pretty
-                ? Object.entries(submissions[childSelected]?.completed_form_pretty).map(([key, v]) => [v.label, v.value || ""])
-                : [],
+            body: withForm
+        }
+
+        const tab2 = {
+            caption: 'Above data has been submitted',
+            head: ["Label", "Value"],
+            body: withoutForm
         }
 
         return (
-            <Table.ScrollContainer scrollbars="y" h="calc(80vh - 100px)">
-                <Table
-                    stickyHeader
-                    striped
-                    data={tab}
-                />
-            </Table.ScrollContainer>
+                <Tabs variant="outline" defaultValue="survey">
+                    <Tabs.List>
+                        <Tabs.Tab value="survey">
+                            SHC Partner Specific Fields
+                        </Tabs.Tab>
+                        <Tabs.Tab value="universal">
+                            Universal Intake Fields
+                        </Tabs.Tab>
+                    </Tabs.List>
+                    <Tabs.Panel value="survey">
+                        <Table.ScrollContainer scrollbars="y" h="calc(80vh - 100px)">
+                            <Table
+                                stickyHeader
+                                striped
+                                data={tab}
+                            />
+                        </Table.ScrollContainer>
+                    </Tabs.Panel>
+                    <Tabs.Panel value="universal">
+                        <Table.ScrollContainer scrollbars="y" h="calc(80vh - 100px)">
+                            <Table
+                                stickyHeader
+                                striped
+                                data={tab2}
+                            />
+                        </Table.ScrollContainer>
+                    </Tabs.Panel>
+                </Tabs>
+
         );
     }
 
@@ -272,7 +282,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
             <div>
                 <LoadingOverlay visible={loading} loaderProps={{ type: 'dots', size:"md", color:"rgb(120,0,0)" }} overlayProps={{ blur: 2 }} />
                 {renderRequestButton()}
-                <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Child Intake Submission">
+                <Modal style={{maxHeight: '80vh', overflow: 'hidden'}} size="80%" opened={childOpened} onClose={childClose} title="Submitted Request Data">
                     {childOpened && renderChildViewModal()}
                 </Modal>
                 <RequestTable
