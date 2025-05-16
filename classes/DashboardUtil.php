@@ -74,10 +74,13 @@ class DashboardUtil
                             else
                                 continue;
 
+                            // Attempt to set field label, if none exist, use the variable name                             
                             if(!empty($project->metadata[$variableName]['element_label']))
                                 $label = trim(strip_tags($project->metadata[$variableName]['element_label']));
-                            else // Otherwise, use element note
+                            elseif(!empty($project->metadata[$variableName]['element_note'])) // Otherwise, use element note
                                 $label = $project->metadata[$variableName]['element_note'];
+                            else
+                                $label = $project->metadata[$variableName]['field_name'];
 
                             $new[$variableName]["label"] = $label;
 
