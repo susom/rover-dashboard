@@ -173,7 +173,7 @@ export function ChildContent({childInfo, immutableParentInfo, mutableParentInfo}
                 <Tabs variant="outline" defaultValue="survey">
                     <Tabs.List>
                         <Tabs.Tab value="survey">
-                            SHC Partner Specific Fields
+                            SHC Partner Fields
                         </Tabs.Tab>
                         <Tabs.Tab value="universal">
                             Universal Intake Fields
